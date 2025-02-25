@@ -25,8 +25,8 @@ Before starting, ensure you have the following installed on your system:
 Open a terminal and run:
 
 ```sh
-git clone https://github.com/cw2236/INFO-5940.git
-cd INFO-5940
+git clone https://github.com/cw2236/5940.git
+cd 5940
 ```
 
 ### 2️⃣ Configure OpenAI API Key
@@ -70,7 +70,7 @@ services:
       - .env
 ```
 
-Restart the container:
+Compose the container:
 
 ```sh
 docker-compose up --build
@@ -80,13 +80,17 @@ Now, your API key will be automatically loaded inside the container.
 
 ---
 ### 3️⃣ Open in VS Code with Docker
+1. Open Docker dashboard and run the imange you just created(It should be called 5940)
 
-1. Open VS Code and navigate to the project folder.
-2. Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac) and search for:
+2. Open VS Code and navigate to the project folder.
+
+3. Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac) and search for:
    ```
    Remote-Containers: Rebuild and Reopen in Container"
    ```
-3. Select this option. VS Code will build and open the project inside the container.
+4. Select From 'docker-compose.yml', then don't select any choice and click OK directly
+
+4. Select this option. VS Code will build and open the project inside the container.
 
 📌 **Note:** If you don’t see this option, ensure that the Remote - Containers extension is installed.
 
@@ -112,6 +116,11 @@ streamlit run Chatbot_A1.py
 ```
 
 ---
+
+
+
+
+
 
 ## 📌 Features
 
