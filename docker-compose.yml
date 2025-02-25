@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
       target: devcontainer
     environment:
-      OPENAI_API_KEY: REMOVED_KEYfdjJJUSK0Xuz0j1Xexm5WQ
+      OPENAI_API_KEY: <API KEY>
       OPENAI_BASE_URL: https://api.ai.it.cornell.edu/
       TZ: America/New_York
     volumes:
