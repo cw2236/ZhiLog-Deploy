@@ -103,6 +103,7 @@ Now, your API key will be automatically loaded inside the container.
 ```sh
 pip install -U langchain-chroma
 pip install pdfminer.six
+
 ```
 
 ---
@@ -129,6 +130,7 @@ streamlit run Chatbot_A1.py
 - Retrieve relevant document sections using similarity search.
 - Generate responses using OpenAI's GPT-4o model.
 - Maintain conversation history within a session.
+- Able to identify source of information. 
 
 ---
 
@@ -143,8 +145,8 @@ streamlit run Chatbot_A1.py
 ## 📌 RAG Pipeline
 
 1. **Document Upload:** Users upload PDF/TXT files.
-2. **Text Processing:** Extracted text is chunked using `RecursiveCharacterTextSplitter`.
-3. **Vector Storage:** Chunks are embedded and stored in ChromaDB.
+2. **Text Processing:** Extracted text is chunked using `RecursiveCharacterTextSplitter`. 
+3. **Vector Storage:** Chunks and source of information are embedded and stored in ChromaDB.
 4. **Retrieval:** Similar document chunks are retrieved based on user queries.
 5. **Generation:** Retrieved content is used to generate an answer using GPT-4o.
 
