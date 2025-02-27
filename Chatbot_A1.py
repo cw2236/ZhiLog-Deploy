@@ -9,7 +9,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain_community.document_loaders import PDFMinerLoader, TextLoader 
+from langchain_community.document_loaders import PDFMinerLoader, TextLoader
 from langchain.chains import ConversationalRetrievalChain
 
 st.title("RAG Chatbot")
@@ -40,18 +40,26 @@ if uploaded_files:
 
         # Process PDF and TXT
         if uploaded_file.name.endswith(".pdf"):
-            loader = PDFMinerLoader(file_path) 
+            loader = PDFMinerLoader(file_path)
         else:
             loader = TextLoader(file_path)
 
         documents = loader.load()
 
+        # Add metadata (source file name) to each document
+        for doc in documents:
+            doc.metadata["source"] = uploaded_file.name  # Store document source
+
         # Semantic Chunking
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
         chunks = splitter.split_documents(documents)
-        
+
+        # Ensure each chunk carries metadata before storing
+        for chunk in chunks:
+            chunk.metadata["source"] = uploaded_file.name  # Attach source file name to each chunk
+
         # Save to ChromaDB
-        vector_store.add_documents(chunks)
+        vector_store.add_documents(chunks)  # Store with metadata
 
     st.sidebar.success("Files uploaded and processed successfully!")
 
@@ -60,14 +68,35 @@ if prompt := st.chat_input():
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
-    # RAG
-    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 2})
-    llm = ChatOpenAI(model="openai.gpt-4o", temperature=0.2)
+    # RAG - Retrieve relevant chunks with metadata
+    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 10})
+    llm = ChatOpenAI(model="openai.gpt-4o", temperature=0.0)
 
-    template = """
-        You are an assistant for question-answering tasks. Use the following retrieved context to answer the question. 
-        If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
+    # Generate formatted context with source information
+    def format_documents(docs):
+        formatted_texts = []
+        sources = set()  # Track sources to mention in response
+        for doc in docs:
+            source = doc.metadata.get("source", "Unknown Source")
+            sources.add(source)
+            formatted_texts.append(f"📄 Source: {source}\n{doc.page_content}")
         
+        formatted_context = "\n\n".join(formatted_texts)
+        return formatted_context, sources  # Return context + sources
+
+    retrieved_docs = retriever.invoke(prompt)
+    context, sources = format_documents(retrieved_docs)
+
+    # Build LLM prompt template
+    template = """
+
+        You are an assistant for question-answering tasks. Follow these steps to answer the question:
+
+            1. First, try to answer the question using your own knowledge.
+            2. If you are not confident in your answer, check the provided context below, don't make up any answer.
+            3. If the context contains relevant information, use it to answer the question.
+            4. If the context does not help or is empty, respond with: "I don't know.
+
         Question: {question} 
         
         Context: {context} 
@@ -77,15 +106,21 @@ if prompt := st.chat_input():
     prompt_template = PromptTemplate.from_template(template)
 
     rag_chain = (
-        {"context": retriever | (lambda docs: "\n\n".join(doc.page_content for doc in docs)), "question": RunnablePassthrough()}
+        {"context": lambda _: context, "question": RunnablePassthrough()}
         | prompt_template
         | llm
         | StrOutputParser()
     )
 
-    # Stream the message for better user experience
+    # Generate response
     with st.chat_message("assistant"):
-        stream = rag_chain.stream(prompt) 
-        response = st.write_stream(stream)  
+        response = rag_chain.invoke(prompt)
 
+        # Append document sources at the end of the response
+        if sources:
+            response += f"\n\n(Source: {', '.join(sources)})"
+
+        st.write(response)
+
+    # Save assistant response to history
     st.session_state.messages.append({"role": "assistant", "content": response})
