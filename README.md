@@ -136,7 +136,8 @@ streamlit run Chatbot_A1.py
 - Retrieve relevant document sections using similarity search.
 - Generate responses using OpenAI's GPT-4o model.
 - Maintain conversation history within a session.
-- Able to identify source of information. 
+- Able to identify source of information.
+- Answer the question even when context does not include useful information, with notification to users that response is generated not based on the context, or respond with "I don't know".
 
 ---
 
@@ -156,14 +157,6 @@ streamlit run Chatbot_A1.py
 4. **Retrieval:** Similar document chunks are retrieved based on user queries.
 5. **Generation:** Retrieved content is used to generate an answer using GPT-4o.
 
----
-
-## 📝 Documentation of Configuration Changes
-
-- Added `.env` file for managing API keys securely.
-- Configured `docker-compose.yml` to load environment variables from `.env`.
-- Used `ChromaDB` for efficient vector storage and retrieval.
-- Implemented `Streamlit` for an interactive user interface.
 
 ---
 
