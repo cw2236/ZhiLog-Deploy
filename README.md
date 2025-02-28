@@ -119,7 +119,13 @@ streamlit run Chatbot_A1.py
 ---
 
 
+## Tests Conducted
+- Tested with asking for domain specific questions such as "Who is Ayham Boucher?" (WITHOUT uploading any documents)
+- Tested with asking for general questions such as "What is a banana?" , "Who is the first president of the U.S.?"(WITHOUT uploading any documents)
+- Tested with asking for general questions such as "What is a banana?", "Who is the first president of the U.S.?" (AFTER uploading single/multiple document(s))
+- Tested with domain specific questions such as "Who is Ayham Boucher", "What does Ayham teach?", "What is Harvard's school color?", "When was Cornell built?" (AFTER uploading single/multiple document(s))
 
+- Results of the tests follow the logic and step defined in the prompt template. 
 
 
 
