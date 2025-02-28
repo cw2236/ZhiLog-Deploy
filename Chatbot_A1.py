@@ -88,14 +88,20 @@ if prompt := st.chat_input():
     context, sources = format_documents(retrieved_docs)
 
     # Build LLM prompt template
+    # Prompt tailored for answering domain-specific questions (but give flexibility to answer other questions with special notification to users)
     template = """
 
         You are an assistant for question-answering tasks. Follow these steps to answer the question:
 
-            1. First, try to answer the question using your own knowledge.
-            2. If you are not confident in your answer, check the provided context below, don't make up any answer.
-            3. If the context contains relevant information, use it to answer the question.
-            4. If the context does not help or is empty, respond with: "I don't know.
+
+            First, check the provided context below, and try to answer the question based only on the context provided.
+
+            then if the context does not help or is empty :
+                try to answer it with your own knowledge
+                say: The provided context does not contain relevant information about the question, so I answered it by my previous knowledge
+            else:
+                say: I don't know. 
+
 
         Question: {question} 
         
