@@ -98,7 +98,7 @@ Now, your API key will be automatically loaded inside the container.
 
 
 
-### 4️⃣ Install Additional Libraries (If Needed)
+### 4️⃣ Install Additional Libraries
 
 ```sh
 pip install -U langchain-chroma
