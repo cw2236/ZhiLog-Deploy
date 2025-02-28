@@ -145,7 +145,7 @@ streamlit run Chatbot_A1.py
 
 - Uploaded files are saved in the `uploaded_docs` directory.
 - Documents are split into chunks for efficient retrieval.
-- Chunks are stored in ChromaDB for similarity search.
+- Chunks are stored in ChromaDB for similarity search, along with metadata (source file name).
 
 ---
 
@@ -154,8 +154,8 @@ streamlit run Chatbot_A1.py
 1. **Document Upload:** Users upload PDF/TXT files.
 2. **Text Processing:** Extracted text is chunked using `RecursiveCharacterTextSplitter`. 
 3. **Vector Storage:** Chunks and source of information are embedded and stored in ChromaDB.
-4. **Retrieval:** Similar document chunks are retrieved based on user queries.
-5. **Generation:** Retrieved content is used to generate an answer using GPT-4o.
+4. **Retrieval:** Similar document chunks and corresponding metadata about source files are retrieved based on user queries.
+5. **Generation:** Retrieved content is used to generate an answer using GPT-4o, following tailored prompts.
 
 
 ---
