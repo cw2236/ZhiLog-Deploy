@@ -79,7 +79,7 @@ if prompt := st.chat_input():
         for doc in docs:
             source = doc.metadata.get("source", "Unknown Source")
             sources.add(source)
-            formatted_texts.append(f"📄 Source: {source}\n{doc.page_content}")
+            formatted_texts.append(f" Source: {source}\n{doc.page_content}")
         
         formatted_context = "\n\n".join(formatted_texts)
         return formatted_context, sources  # Return context + sources
