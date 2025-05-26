@@ -503,7 +503,7 @@ def display_pdf_viewer(pdf_base64):
                 
                 # 调用 OpenAI API
                 client = OpenAI(
-                    api_key="REMOVED_KEYproj-XMB8a133ONEnE-dvPNiLRg8ZaR9G2uFQGjE7Y0EMhKxCi-9QpC6cs9dsV0GRnQSUz5BurwWMFFT3BlbkFJV3du38FNGTn5Rb8YI9kPMUCa3R29fl61vsQcNE144cPMipPVvNiEs5p06uipJFUGIJc4u-7OgA",
+                    api_key=os.environ.get("OPENAI_API_KEY"),
                     base_url="https://api.openai.com/v1"
                 )
                 
