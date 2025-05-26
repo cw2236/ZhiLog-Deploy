@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ZhiLog</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js"></script>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <style>
+    body { background: #fafbfc; }
+    .main-layout { display: flex; height: 100vh; }
+    .sidebar-section { max-width: 210px; }
+    .sidebar-item {
+        color: #7b8591;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+        display: block;
+        min-width: 0;
+    }
+    .pdf-page-btn {
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(33,150,243,0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 12px;
+        transition: box-shadow 0.2s, background 0.2s;
+        cursor: pointer;
+        outline: none;
+    }
+    .pdf-page-btn:hover {
+        background: #e3f2fd;
+        box-shadow: 0 4px 16px rgba(33,150,243,0.15);
+    }
+    .pdf-page-info-v2 {
+        font-size: 18px;
+        color: #7b8591;
+        font-weight: 500;
+        margin: 0 8px;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    .upload-form-v2 label:hover {
+        opacity: 1;
+        color: #fff;
+        background: linear-gradient(90deg,#5b9df9 60%,#3a7be6 100%);
+        border:1.5px solid #3a7be6;
+        box-shadow:0 6px 32px 0 rgba(90,150,255,0.18),0 2px 12px 0 rgba(90,150,255,0.12);
+        filter:brightness(1.08);
+    }
+    .pdf-area-v2 {
+        /* 去除右侧分割线 */
+        border-right: none !important;
+    }
+    .chatbot-panel-v2, .chat-right-panel-v2 {
+        /* 去除左侧分割线 */
+        border-left: none !important;
+    }
+    .thinking-dots { font-size:1em; color:#888; display:inline-block; }
+    .thinking-dots .dot { animation: blink 1s infinite alternate; opacity:0.2; }
+    .thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%{opacity:0.2;} 100%{opacity:1;} }
+    #note-chat-history .chat-reference-card-v2 {
+        max-width: 100%;
+        width: fit-content;
+    }
+    #note-chat-history .chat-reference-content-v2 {
+        max-width: 320px;
+        display: inline-block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom;
+    }
+    .sidebar-v2 {
+        transition: width 0.3s, min-width 0.3s, max-width 0.3s, box-shadow 0.3s, background 0.3s;
+        will-change: width, min-width, max-width;
+    }
+    #sidebar-expand-btn { display: none !important; }
+    .sidebar-collapsed + #sidebar-expand-btn { display: flex !important; }
+    .sidebar-collapsed {
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        overflow: hidden !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+    .article-overview-menu-item:hover { background: #f2f3f5; }
+    .article-overview-hidden { display: none !important; }
+    .article-overview-collapsed-content {
+        max-height: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        opacity: 0.2;
+        transition: max-height 0.3s, opacity 0.2s;
+    }
+    .article-overview-animated {
+        max-height: 300px;
+        overflow: hidden;
+        transition: max-height 0.4s cubic-bezier(.4,0,.2,1), opacity 0.2s;
+        opacity: 1;
+        position: relative;
+    }
+    .article-overview-expanded-all {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    .article-overview-more-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        background: none;
+        border: none;
+        color: #2563eb;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 8px;
+        font-size: 1em;
+    }
+    .article-overview-expanded-scroll {
+        max-height: 400px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden;
+        transition: max-height 0.4s cubic-bezier(.4,0,.2,1), opacity 0.2s;
+    }
+    /* Agent Chat 样式 */
+    .chat-section {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .message {
+        display: flex;
+        margin-bottom: 20px;
+        align-items: flex-start;
+    }
+
+    .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        font-size: 20px;
+    }
+
+    .message-content {
+        background: #f0f2f5;
+        padding: 12px 16px;
+        border-radius: 12px;
+        max-width: 80%;
+    }
+
+    .user-message .message-content {
+        background: #e3f2fd;
+    }
+
+    .agent-message .message-content {
+        background: #f5f5f5;
+    }
+
+    .guide-question {
+        background: #fff3e0 !important;
+        border-left: 4px solid #ff9800;
+    }
+
+    .chat-input {
+        display: flex;
+        padding: 20px;
+        border-top: 1px solid #eee;
+    }
+
+    .chat-input textarea {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        resize: none;
+        height: 40px;
+        margin-right: 12px;
+    }
+
+    .chat-input button {
+        padding: 0 20px;
+        background: #1a73e8;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .chat-input button:hover {
+        background: #1557b0;
+    }
+    </style>
+    <script>
+    async function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        if (!message) return;
+        input.value = '';
+        document.getElementById('chat-send-btn').disabled = true;
+        const reference = currentReference;
+        // 先渲染用户消息
+        let history = window.chatHistory || [];
+        history.push({role:'user', content:message, reference});
+        // 插入思考中气泡
+        history.push({role:'assistant', content:'', thinking:true});
+        renderChat(history);
+        window.chatHistory = history;
+        // 发送请求
+        const res = await fetch('/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message, reference})
+        });
+        const data = await res.json();
+        setTimeout(() => {
+            renderChat(data.chat_history);
+            window.chatHistory = data.chat_history;
+            document.getElementById('chat-send-btn').disabled = false;
+            currentReference = '';
+            renderReferenceCard('');
+        }, 1500);
+    }
+    function formatSummary(text) {
+        // 替换 **数字. 标题:** 为 数字. 标题:
+        text = text.replace(/\*\*(\d+\.\s[^*]+):\*\*/g, '\n$1:');
+        // 去掉所有剩余的 **
+        text = text.replace(/\*\*/g, '');
+        // 替换 - 为换行加 -
+        text = text.replace(/ - /g, '\n- ');
+        // 去掉多余的首尾空行
+        return text.trim();
+    }
+    function formatNote(text) {
+        // 将 **加粗** 转换为 <strong>加粗</strong>
+        text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        // 将 *斜体* 转换为 <em>斜体</em>
+        text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        // 将 - 开头的行转换为列表项
+        text = text.replace(/^- (.+)$/gm, '<li>$1</li>');
+        // 将数字. 开头的行转换为有序列表项
+        text = text.replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>');
+        // 将连续的空行转换为单个空行
+        text = text.replace(/\n{3,}/g, '\n\n');
+        return text.trim();
+    }
+    function renderChat(history) {
+        const chatBox = document.getElementById('chat-messages');
+        chatBox.innerHTML = '';
+        for (const msg of history) {
+            const div = document.createElement('div');
+            div.className = 'chat-bubble ' + (msg.role === 'user' ? 'user' : 'assistant');
+            if (msg.role === 'user' && msg.reference) {
+                div.innerHTML = `<div class='chat-reference-card-v2'><span class='chat-reference-icon-v2'>↳</span><span class='chat-reference-content-v2'>${msg.reference}</span></div><div>${msg.content}</div>`;
+            } else if (msg.role === 'assistant' && msg.thinking) {
+                div.innerHTML = `<div class='chat-message-content'><span class='thinking-dots'>Thinking<span class='dot'>.</span><span class='dot'>.</span><span class='dot'>.</span></span></div>`;
+            } else if (msg.role === 'assistant') {
+                div.innerText = formatSummary(msg.content);
+            } else {
+                div.textContent = msg.content;
+            }
+            chatBox.appendChild(div);
+        }
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    async function exportNotes() {
+        document.getElementById('export-notes-btn').disabled = true;
+        const res = await fetch('/export_notes', {method: 'POST'});
+        const data = await res.json();
+        document.getElementById('notes-content').textContent = data.notes;
+        document.getElementById('export-notes-btn').disabled = false;
+    }
+    window.onload = function() {
+        renderChat({{ chat_history|tojson }});
+        // 渲染reference卡片（如果有selected_text）
+        const selectedText = {{ selected_text|tojson }};
+        if (selectedText && selectedText.length > 0) {
+            renderReferenceCard(selectedText);
+        }
+        // 自动弹出文件选择框
+        if (window.location.search.includes('auto_upload=1')) {
+            setTimeout(() => {
+                const fileInput = document.getElementById('pdf_file');
+                if (fileInput) fileInput.click();
+            }, 300);
+        }
+        // 绑定Send按钮
+        document.getElementById('chat-send-btn').onclick = sendMessage;
+        // 绑定回车发送
+        document.getElementById('chat-input').onkeydown = function(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+        document.getElementById('reset-btn').onclick = async function() {
+            await fetch('/reset', {method: 'POST'});
+            renderChat([]);
+            document.getElementById('notes-content').textContent = '';
+            document.getElementById('pdf-summary').textContent = '';
+        }
+        document.getElementById('export-notes-btn').onclick = exportNotes;
+    }
+    // ========== 主页面 reference 相关 ==========
+    let currentReference = '';
+    function renderReferenceCard(text) {
+        let refArea = document.getElementById('reference-area');
+        if (!refArea) return;
+        refArea.innerHTML = '';
+        if (!text) return;
+        let refCard = document.createElement('div');
+        refCard.className = 'chat-reference-card-v2';
+        refCard.innerHTML = `<span class='chat-reference-icon-v2'>↳</span><span class='chat-reference-content-v2'>${text}</span><button class='chat-reference-close-v2'>✕</button>`;
+        refArea.appendChild(refCard);
+        refCard.querySelector('.chat-reference-close-v2').onclick = function() {
+            currentReference = '';
+            renderReferenceCard('');
+        };
+    }
+
+    // 创建引用按钮的通用函数
+    function createReferenceButton() {
+        const btn = document.createElement('button');
+        btn.className = 'reference-btn';
+        btn.innerHTML = '<i class="fa fa-quote-right"></i>';
+        btn.style.position = 'absolute';
+        btn.style.width = '36px';
+        btn.style.height = '36px';
+        btn.style.fontSize = '16px';
+        btn.style.padding = '0';
+        btn.style.background = 'rgba(33, 150, 243, 0.95)';
+        btn.style.color = '#fff';
+        btn.style.border = 'none';
+        btn.style.borderRadius = '50%';
+        btn.style.boxShadow = '0 4px 12px rgba(33, 150, 243, 0.3)';
+        btn.style.display = 'flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+        btn.style.cursor = 'pointer';
+        btn.style.zIndex = '1000';
+        btn.style.transition = 'all 0.2s ease';
+        btn.style.backdropFilter = 'blur(4px)';
+        btn.style.transform = 'scale(0.9)';
+        btn.style.opacity = '0';
+        document.body.appendChild(btn);
+        return btn;
+    }
+
+    // 显示引用按钮的通用函数
+    function showReferenceButton(btn, x, y) {
+        btn.style.display = 'flex';
+        btn.style.left = (x + 8) + 'px';
+        btn.style.top = (y + 8) + 'px';
+        btn.style.transform = 'scale(1)';
+        btn.style.opacity = '1';
+    }
+
+    // 隐藏引用按钮的通用函数
+    function hideReferenceButton(btn) {
+        btn.style.transform = 'scale(0.9)';
+        btn.style.opacity = '0';
+        setTimeout(() => {
+            btn.style.display = 'none';
+        }, 200);
+    }
+
+    // 修改 PDF viewer 的文本选择处理
+    textLayerDiv.addEventListener('mouseup', function(e) {
+        const selection = window.getSelection();
+        selectedText = selection.toString().trim();
+        lastMouseUpEvent = e;
+        let btn = document.getElementById('confirm-selection-btn');
+        if (!btn) {
+            btn = createReferenceButton();
+            btn.id = 'confirm-selection-btn';
+            btn.onclick = async function() {
+                if (selectedText) {
+                    await fetch('/select_text', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({text: selectedText, page: currentPage, bbox: null})
+                    });
+                    fetchSessions(currentPage);
+                    currentReference = selectedText;
+                    renderReferenceCard(selectedText);
+                    hideReferenceButton(btn);
+                    window.getSelection().removeAllRanges();
+                    selectedText = '';
+                }
+            };
+        }
+        if (selectedText) {
+            showReferenceButton(btn, e.pageX, e.pageY);
+        } else {
+            hideReferenceButton(btn);
+        }
+    });
+
+    // 修改 Note chat 的文本选择处理
+    if (window.location.pathname.includes('note_chat')) {
+        // ... existing Quill initialization code ...
+        quill.on('selection-change', function(range) {
+            if (range && range.length > 0) {
+                const text = quill.getText(range.index, range.length).trim();
+                noteReference = text; // 实时更新
+                let btn = document.getElementById('note-ref-btn');
+                if (!btn) {
+                    btn = createReferenceButton();
+                    btn.id = 'note-ref-btn';
+                    btn.onclick = function() {
+                        renderNoteReferenceCard(noteReference);
+                        hideReferenceButton(btn);
+                        quill.setSelection(null);
+                    };
+                }
+                if (text) {
+                    const bounds = quill.getBounds(range.index, range.length);
+                    const editorBounds = quill.container.getBoundingClientRect();
+                    showReferenceButton(btn, editorBounds.left + bounds.left + bounds.width, editorBounds.top + bounds.top);
+                } else {
+                    hideReferenceButton(btn);
+                }
+            } else {
+                const btn = document.getElementById('note-ref-btn');
+                if (btn) hideReferenceButton(btn);
+            }
+        });
+    }
+    // ========== Session堆叠区动态渲染与交互 ==========
+    async function fetchSessions(filterPage=null) {
+        const res = await fetch('/get_sessions');
+        const data = await res.json();
+        if (data.status === 'success') {
+            renderSessionStack(data.sessions, data.active_session, filterPage);
+            setTimeout(afterSessionRendered, 200);
+        }
+    }
+
+    function renderSessionStack(sessions, activeSessionId, filterPage=null) {
+        const stack = document.querySelector('.chat-session-stack');
+        stack.innerHTML = '';
+        let sessionList = Object.entries(sessions);
+        // 只显示当前页的session
+        if (filterPage !== null) {
+            sessionList = sessionList.filter(([_, sess]) => sess.page === filterPage);
+        }
+        if (sessionList.length === 0) {
+            stack.innerHTML = '<div style="color:#b1b5c3;text-align:center;margin-top:60px;">No Reference Chat</div>';
+            return;
+        }
+        for (const [sessionId, sess] of sessionList) {
+            const expanded = (sessionId === activeSessionId);
+            const card = document.createElement('div');
+            card.className = 'chat-session-card' + (expanded ? ' expanded' : '');
+            card.dataset.sessionId = sessionId;
+            // header
+            const header = document.createElement('div');
+            header.className = 'chat-session-header';
+            header.innerHTML = `
+                <span class="chat-session-ref" title="${sess.reference}">Reference: ${sess.reference.length>40?sess.reference.slice(0,40)+'...':sess.reference}</span>
+                <button class="chat-session-toggle"><i class="fa fa-chevron-${expanded?'up':'down'}"></i></button>
+                <button class="chat-session-delete"><i class="fa fa-trash"></i></button>
+            `;
+            // toggle展开/折叠
+            header.querySelector('.chat-session-toggle').onclick = function(e) {
+                e.stopPropagation();
+                if(card.classList.contains('expanded')) {
+                    card.classList.remove('expanded');
+                } else {
+                    document.querySelectorAll('.chat-session-card').forEach(c=>c.classList.remove('expanded'));
+                    card.classList.add('expanded');
+                    setActiveSession(sessionId);
+                }
+                renderSessionStack(sessions, card.classList.contains('expanded')?sessionId:null, filterPage);
+            };
+            // 删除
+            header.querySelector('.chat-session-delete').onclick = async function(e) {
+                e.stopPropagation();
+                await fetch('/delete_session', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId})});
+                fetchSessions(filterPage);
+            };
+            // 点击header切换session并高亮PDF
+            header.onclick = function(e) {
+                if(e.target.classList.contains('chat-session-toggle')||e.target.classList.contains('fa-chevron-up')||e.target.classList.contains('fa-chevron-down')||e.target.classList.contains('chat-session-delete')) return;
+                document.querySelectorAll('.chat-session-card').forEach(c=>c.classList.remove('expanded'));
+                card.classList.add('expanded');
+                setActiveSession(sessionId);
+                renderSessionStack(sessions, sessionId, filterPage);
+                // TODO: PDF高亮与滚动到sess.page/sess.bbox
+            };
+            card.appendChild(header);
+            // body
+            const body = document.createElement('div');
+            body.className = 'chat-session-body';
+            if(sess.chat_history && sess.chat_history.length>0) {
+                for(const msg of sess.chat_history) {
+                    const msgCard = document.createElement('div');
+                    msgCard.className = 'chat-message-card ' + (msg.role==='user'?'user':'assistant');
+                    let contentHtml = '';
+                    if (msg.role === 'assistant' && msg.thinking) {
+                        contentHtml = `<div class=\"chat-message-content\"><span class=\"thinking-dots\">Thinking<span class=\"dot\">.</span><span class=\"dot\">.</span><span class=\"dot\">.</span></span></div>`;
+                    } else if (msg.role === 'assistant') {
+                        contentHtml = `<div class=\"chat-message-content\" style=\"white-space:pre-line;\">${formatSummary(msg.content)}</div>`;
+                    } else {
+                        contentHtml = `<div class=\"chat-message-content\">${msg.content}</div>`;
+                    }
+                    msgCard.innerHTML = `
+                      <div class="chat-message-header">
+                        <img class="chat-avatar" src="${msg.role==='user'?'https://randomuser.me/api/portraits/men/32.jpg':'/static/bot.png'}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+                        <span class="chat-nickname">${msg.role==='user'?'Zuo':'ZhiLog'}</span>
+                        <span class="chat-time">${msg.time||''}</span>
+                      </div>
+                      ${contentHtml}
+                    `;
+                    body.appendChild(msgCard);
+                }
+            }
+            card.appendChild(body);
+            // 输入区
+            const inputRow = document.createElement('div');
+            inputRow.className = 'chat-session-input-row';
+            inputRow.innerHTML = `
+                <input type="text" class="chat-input-v2" placeholder="Message to ZhiLog...">
+                <button class="chat-send-btn-v2"><i class="fa fa-paper-plane"></i></button>
+            `;
+            // 发送消息
+            inputRow.querySelector('.chat-send-btn-v2').onclick = async function() {
+                const input = inputRow.querySelector('input');
+                const msg = input.value.trim();
+                if(!msg) return;
+                input.disabled = true;
+                inputRow.querySelector('button').disabled = true;
+                // 先渲染用户消息和思考气泡
+                if(!sess.chat_history) sess.chat_history = [];
+                sess.chat_history.push({role:'user', content:msg});
+                sess.chat_history.push({role:'assistant', content:'', thinking:true});
+                renderSessionStack(sessions, sessionId, filterPage);
+                const res = await fetch('/chat', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,session_id:sessionId})});
+                const data = await res.json();
+                setTimeout(() => {
+                    sessions[sessionId].chat_history = data.chat_history;
+                    renderSessionStack(sessions, sessionId, filterPage);
+                    input.value = '';
+                    input.disabled = false;
+                    inputRow.querySelector('button').disabled = false;
+                }, 1500);
+            };
+            // 回车发送
+            inputRow.querySelector('input').onkeydown = function(e) {
+                if(e.key==='Enter') inputRow.querySelector('.chat-send-btn-v2').click();
+            };
+            card.appendChild(inputRow);
+            stack.appendChild(card);
+        }
+    }
+
+    function setActiveSession(sessionId) {
+    }
+
+    // PDF渲染后调用高亮和连线
+    function afterPDFRendered() {
+        highlightReferencesOnPDF();
+        drawReferenceSessionLines();
+    }
+    // session堆叠区渲染后也调用
+    function afterSessionRendered() {
+        highlightReferencesOnPDF();
+        drawReferenceSessionLines();
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+        if (typeof renderSessionStack === 'function') {
+            const sessions = {{ chat_sessions|tojson }};
+            const activeSessionId = null;
+            renderSessionStack(sessions, activeSessionId);
+        }
+    });
+    </script>
+</head>
+<body>
+<div class="main-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar-v2">
+        <div class="sidebar-header-v2" style="display:flex;align-items:center;justify-content:space-between;padding:0 24px 18px 24px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <img src="/static/Logo.png" alt="logo" style="width:150px;height:60px;cursor:pointer;" onclick="window.location.href='/workspace'"/>
+            </div>
+            <button id="sidebar-toggle-btn" style="background:none;border:none;outline:none;cursor:pointer;padding:0;margin-left:8px;display:flex;align-items:center;">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="7" y="8" width="18" height="16" rx="6" stroke="#222" stroke-width="2"/><rect x="15" y="8" width="2" height="16" rx="1" fill="#222"/></svg>
+            </button>
+        </div>
+        <div class="sidebar-inner">
+            <div class="sidebar-group">
+                <div class="sidebar-section-title">Workspace</div>
+                <div class="sidebar-section">
+                    <div class="sidebar-folder" onclick="window.location.href='/workspace'"><i class="fa fa-folder"></i> Workspace</div>
+                    {% if pdf_filename %}
+                        <div class="sidebar-item{% if mode == 'main' %} sidebar-item-active{% endif %}" onclick="window.location.href='/'"><i class="fa fa-file-lines"></i> {{ pdf_filename }}</div>
+                        {% if has_note %}
+                            <div class="sidebar-item{% if mode == 'note_chat' %} sidebar-item-active{% endif %}" onclick="window.location.href='/note_chat'" style="padding-left:48px;font-size:0.97em;color:#2196F3;"><i class="fa fa-pen"></i> 1.1 Quick Notes</div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            <!-- 新增 Knowledge Map 分组 -->
+            <div class="sidebar-group">
+                <div class="sidebar-section-title" style="font-weight:700;cursor:pointer;" onclick="window.location.href='/knowledge_map'">
+                    <i class="fa fa-project-diagram" style="margin-right:6px;"></i> Knowledge Map
+                    <span id="km-toggle" style="margin-left:8px;cursor:pointer;font-size:14px;">▶</span>
+                </div>
+                <div class="sidebar-section" id="km-section" style="padding-left:18px;display:none;">
+                    <div class="sidebar-item" onclick="window.location.href='/knowledge_map'">Cognitive Map of Generative</div>
+                    <div class="sidebar-item" onclick="window.location.href='/knowledge_map'">Agentic AI & ML Framework</div>
+                </div>
+            </div>
+            <!-- 新增 Zhi-Hub Community 分组 -->
+            <div class="sidebar-group">
+                <div class="sidebar-section-title" style="font-weight:700;"><i class="fa fa-book" style="margin-right:6px;"></i> Zhi-Hub Community</div>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-section-title">Quick Action</div>
+                <div class="sidebar-section">
+                    <div class="sidebar-action" onclick="window.open('https://www.getzhilog.com/', '_blank')"><i class="fa fa-circle-exclamation"></i> Help</div>
+                    <div class="sidebar-action"><i class="fa fa-gear"></i> Settings</div>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-bottom-v2">
+            <img class="avatar-v2" src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=facearea&w=256&h=256" />
+            <div class="upgrade-v2">Upgrade Now !</div>
+        </div>
+    </aside>
+    <!-- 展开sidebar按钮 -->
+    <button id="sidebar-expand-btn" style="display:none;position:fixed;top:32px;left:0;z-index:2000;background:#fff;border:none;border-radius:0 12px 12px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08);width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none"><rect x="7" y="8" width="18" height="16" rx="6" stroke="#222" stroke-width="2"/><rect x="15" y="8" width="2" height="16" rx="1" fill="#222"/></svg>
+    </button>
+    <!-- 中间区域 -->
+    {% if mode == 'note_chat' %}
+    <main class="note-edit-main-v2">
+        <div class="note-edit-area">
+            <h2 style="font-size:2rem;line-height:1.3;margin-bottom:18px;">📝 Quick Notes</h2>
+            <div id="note-toolbar"></div>
+            <div id="note-content" style="min-height:420px;height:calc(100vh - 220px);font-size:18px;font-family:'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif;white-space:pre-line;">{{ note|safe }}</div>
+        </div>
+    </main>
+    <div class="note-chatbot-area" style="background:#fff;border-left:none;font-family:'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif;">
+        <div class="chat-header-v2">
+            <span class="chat-title-v2">Note Chatbot</span>
+        </div>
+        <div id="note-chat-history" class="chat-message-v2"></div>
+        <div id="note-reference-area"></div>
+        <div class="chat-input-row-v2">
+            <input type="text" class="chat-input-v2" id="note-chat-input" placeholder="Ask based on the notes on the left...">
+            <button class="chat-send-btn-v2" id="note-chat-send"><i class="fa fa-paper-plane"></i></button>
+        </div>
+    </div>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script>
+    let noteHistory = {{ note_chatbot_history|tojson }};
+    let noteReference = '';
+    function renderNoteChatHistory() {
+        const chatBox = document.getElementById('note-chat-history');
+        chatBox.innerHTML = '';
+        for(const msg of noteHistory) {
+            const div = document.createElement('div');
+            div.className = 'chat-message-card ' + (msg.role === 'user' ? 'user' : 'assistant');
+            let refHtml = '';
+            if (msg.reference) {
+                let refText = msg.reference.length > 40 ? msg.reference.slice(0, 40) + '...' : msg.reference;
+                refHtml = `<div class='chat-reference-card-v2'><span class='chat-reference-icon-v2'>↳</span><span class='chat-reference-content-v2' title="${msg.reference.replace(/"/g, '&quot;')}">${refText}</span></div>`;
+            }
+            let contentHtml = '';
+            if (msg.role === 'assistant' && msg.thinking) {
+                contentHtml = `<div class="chat-message-content"><span class="thinking-dots">Thinking<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span></div>`;
+            } else if (msg.role === 'assistant') {
+                contentHtml = `<div class="chat-message-content" style="white-space:pre-line;"></div>`;
+            } else {
+                contentHtml = `<div class="chat-message-content">${msg.content}</div>`;
+            }
+            div.innerHTML = `
+                <div class="chat-message-header">
+                    <img class="chat-avatar" src="${msg.role==='user'?'https://randomuser.me/api/portraits/men/32.jpg':'/static/bot.png'}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+                    <span class="chat-nickname">${msg.role==='user'?'Zuo':'ZhiLog'}</span>
+                    <span class="chat-time">${msg.time||''}</span>
+                </div>
+                ${refHtml}${contentHtml}
+            `;
+            if (msg.role === 'assistant' && msg.thinking) {
+                // nothing
+            } else if (msg.role === 'assistant') {
+                div.querySelector('.chat-message-content').innerText = formatSummary(msg.content);
+            }
+            chatBox.appendChild(div);
+        }
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    function renderNoteReferenceCard(text) {
+        let refArea = document.getElementById('note-reference-area');
+        refArea.innerHTML = '';
+        if (!text) return;
+        let refCard = document.createElement('div');
+        refCard.className = 'chat-reference-card-v2';
+        refCard.innerHTML = `<span class='chat-reference-icon-v2'>↳</span><span class='chat-reference-content-v2'>${text}</span><button class='chat-reference-close-v2'>✕</button>`;
+        refArea.appendChild(refCard);
+        refCard.querySelector('.chat-reference-close-v2').onclick = function() {
+            noteReference = '';
+            renderNoteReferenceCard('');
+        };
+    }
+    async function sendNoteMsg() {
+        const note = quill.getText();
+        const question = document.getElementById('note-chat-input').value.trim();
+        if(!question) return;
+        const now = new Date();
+        const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+        let ref = noteReference;
+        noteHistory.push({role:'user', content:question, time: timeStr, reference: ref});
+        // 插入思考中气泡
+        noteHistory.push({role:'assistant', content:'', thinking:true});
+        renderNoteChatHistory();
+        document.getElementById('note-chat-input').value = '';
+        document.getElementById('note-chat-send').disabled = true;
+        document.getElementById('note-chat-send').innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+        try {
+            const res = await fetch('/note_chat_ask', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    note: note,
+                    question: question,
+                    reference: ref
+                })
+            });
+            const data = await res.json();
+            setTimeout(() => {
+                noteHistory = data.history;
+                renderNoteChatHistory();
+                document.getElementById('note-chat-send').disabled = false;
+                document.getElementById('note-chat-send').innerHTML = '<i class="fa fa-paper-plane"></i>';
+                noteReference = '';
+                renderNoteReferenceCard('');
+            }, 1500);
+        } catch (error) {
+            document.getElementById('note-chat-send').disabled = false;
+            document.getElementById('note-chat-send').innerHTML = '<i class="fa fa-paper-plane"></i>';
+            noteReference = '';
+            renderNoteReferenceCard('');
+        }
+    }
+    document.getElementById('note-chat-send').onclick = sendNoteMsg;
+    document.getElementById('note-chat-input').onkeydown = function(e){ if(e.key==='Enter') sendNoteMsg(); };
+    renderNoteChatHistory();
+    renderNoteReferenceCard(noteReference);
+    // 笔记区选中文本引用
+    const noteContent = document.getElementById('note-content');
+    noteContent.addEventListener('mouseup', function(e) {
+        const selection = noteContent.value.substring(noteContent.selectionStart, noteContent.selectionEnd).trim();
+        let btn = document.getElementById('note-ref-btn');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.id = 'note-ref-btn';
+            btn.textContent = '✅';
+            btn.style.position = 'absolute';
+            btn.style.width = '32px';
+            btn.style.height = '32px';
+            btn.style.fontSize = '20px';
+            btn.style.padding = '0';
+            btn.style.background = '#2196F3';
+            btn.style.color = '#fff';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '50%';
+            btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            btn.style.display = 'flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
+            btn.style.cursor = 'pointer';
+            btn.style.zIndex = 1000;
+            document.body.appendChild(btn);
+        }
+        if (selection) {
+            btn.style.display = 'flex';
+            btn.style.left = (e.pageX + 8) + 'px';
+            btn.style.top = (e.pageY + 8) + 'px';
+            btn.onclick = function() {
+                noteReference = selection;
+                renderNoteReferenceCard(selection);
+                btn.style.display = 'none';
+                noteContent.selectionStart = noteContent.selectionEnd; // 取消选中
+            };
+        } else {
+            btn.style.display = 'none';
+        }
+    });
+    // 在window.onload或DOMContentLoaded时重新赋值，确保切换页面时历史被恢复
+    window.addEventListener('DOMContentLoaded', function() {
+        async function syncNoteChatHistoryFromServer() {
+            // 只在Quick Notes页面拉取
+            if (window.location.pathname.includes('note_chat')) {
+                const res = await fetch('/get_note_chat_history');
+                const data = await res.json();
+                noteHistory = data.history;
+                renderNoteChatHistory();
+                renderNoteReferenceCard(noteReference);
+            } else {
+                // 其他页面仍用后端渲染的初始值
+                noteHistory = {{ note_chatbot_history|tojson }};
+                renderNoteChatHistory();
+                renderNoteReferenceCard(noteReference);
+            }
+        }
+        syncNoteChatHistoryFromServer();
+    });
+    function formatNoteForQuill(text) {
+        let lines = text.split('\n');
+        let inList = false;
+        let html = '';
+        for (let line of lines) {
+            if (line.trim().startsWith('- ')) {
+                if (!inList) {
+                    html += '<ul>';
+                    inList = true;
+                }
+                html += '<li>' + line.trim().substring(2) + '</li>';
+            } else if (line.trim() === '') {
+                if (inList) {
+                    html += '</ul>';
+                    inList = false;
+                }
+                html += '<p><br></p>';
+            } else {
+                if (inList) {
+                    html += '</ul>';
+                    inList = false;
+                }
+                html += '<p>' + line + '</p>';
+            }
+        }
+        if (inList) html += '</ul>';
+        return html;
+    }
+    if (window.location.pathname.includes('note_chat')) {
+      var noteRaw = {{ note|tojson }};
+      var noteHtml = formatNoteForQuill(noteRaw);
+      document.getElementById('note-content').innerHTML = noteHtml;
+      var quill = new Quill('#note-content', {
+        modules: { toolbar: [
+          [{ 'header': [1, 2, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          ['blockquote', 'code-block'],
+          ['clean']
+        ] },
+        theme: 'snow',
+        placeholder: 'Write your notes here...'
+      });
+
+      // 修正文本选择功能，实时更新noteReference
+      quill.on('selection-change', function(range) {
+        if (range && range.length > 0) {
+          const text = quill.getText(range.index, range.length).trim();
+          noteReference = text; // 实时更新
+          let btn = document.getElementById('note-ref-btn');
+          if (!btn) {
+            btn = createReferenceButton();
+            btn.id = 'note-ref-btn';
+            btn.onclick = function() {
+              renderNoteReferenceCard(noteReference);
+              hideReferenceButton(btn);
+              quill.setSelection(null);
+            };
+          }
+          if (text) {
+            const bounds = quill.getBounds(range.index, range.length);
+            const editorBounds = quill.container.getBoundingClientRect();
+            showReferenceButton(btn, editorBounds.left + bounds.left + bounds.width, editorBounds.top + bounds.top);
+          } else {
+            hideReferenceButton(btn);
+          }
+        } else {
+          const btn = document.getElementById('note-ref-btn');
+          if (btn) hideReferenceButton(btn);
+        }
+      });
+    }
+    </script>
+    {% else %}
+    <main class="pdf-area-v2" style="background:#f7f9fa;">
+        {% if pdf_url %}
+        <div class="pdf-header-v2">
+            <span class="pdf-page-info-v2" id="pdf-page-info">Page 1 of 1</span>
+        </div>
+        {% endif %}
+        {% if not pdf_url %}
+        <div class="pdf-upload-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:340px;">
+            <div style="font-size:1.25rem;color:#222;font-weight:500;margin-bottom:18px;">No document uploaded yet</div>
+            <div style="color:#7b8591;font-size:1.05rem;margin-bottom:28px;">Please upload a document to start your intelligent reading and Q&A journey!</div>
+            <form method="post" enctype="multipart/form-data" class="upload-form-v2" style="margin:0;">
+                <label for="pdf_file" style="background:rgba(255,255,255,0.18);backdrop-filter:blur(8px);border:1.5px solid #5b9df9;padding:13px 36px;border-radius:28px;font-size:1.13rem;cursor:pointer;box-shadow:0 4px 24px 0 rgba(90,150,255,0.10),0 1.5px 8px 0 rgba(90,150,255,0.08);transition:all 0.22s;opacity:0.93;color:#2563eb;display:flex;align-items:center;gap:12px;font-weight:600;letter-spacing:0.02em;">
+                    <i class="fa fa-upload" style="font-size:1.2em;"></i> Upload File
+                </label>
+                <input type="file" name="pdf_file" id="pdf_file" accept="application/pdf" onchange="resetHistory(); this.form.submit();" style="display:none;">
+            </form>
+        </div>
+        {% endif %}
+        <div class="pdf-container-v2">
+            {% if pdf_url %}
+                <div class="pdf-scroll-container">
+                    <div id="pdf-viewer-wrapper">
+                        <canvas id="pdf-canvas"></canvas>
+                        <div id="pdf-text-layer" class="textLayer"></div>
+                    </div>
+                </div>
+                <script>
+                    const url = "{{ pdf_url }}";
+                    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+                    let pdfDoc = null;
+                    let currentPage = 1;
+                    let totalPages = 1;
+                    let selectedText = '';
+                    let lastMouseUpEvent = null;
+                    let confirmBtn = document.getElementById('confirm-selection-btn');
+                    let textLayerDiv = document.getElementById('pdf-text-layer');
+
+                    function renderPage(pageNum) {
+                        pdfDoc.getPage(pageNum).then(function(page) {
+                            var scale = 1.5;
+                            var viewport = page.getViewport({scale: scale});
+                            var canvas = document.getElementById('pdf-canvas');
+                            var context = canvas.getContext('2d');
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+                            canvas.style.width = viewport.width + 'px';
+                            canvas.style.height = viewport.height + 'px';
+                            // 设置wrapper宽高
+                            var wrapper = document.getElementById('pdf-viewer-wrapper');
+                            wrapper.style.width = viewport.width + 'px';
+                            wrapper.style.height = viewport.height + 'px';
+                            textLayerDiv.style.width = viewport.width + 'px';
+                            textLayerDiv.style.height = viewport.height + 'px';
+                            textLayerDiv.style.transform = canvas.style.transform;
+                            // 修复z-index和pointer-events
+                            textLayerDiv.style.zIndex = 20;
+                            textLayerDiv.style.pointerEvents = 'auto';
+                            var renderContext = {
+                                canvasContext: context,
+                                viewport: viewport
+                            };
+                            page.render(renderContext);
+                            // 渲染textLayer
+                            page.getTextContent().then(function(textContent) {
+                                textLayerDiv.innerHTML = '';
+                                pdfjsLib.renderTextLayer({
+                                    textContent: textContent,
+                                    container: textLayerDiv,
+                                    viewport: viewport,
+                                    textDivs: []
+                                });
+                            });
+                            setTimeout(afterPDFRendered, 300);
+                        });
+                        document.getElementById('pdf-page-info').textContent = `Page ${pageNum} of ${totalPages}`;
+                    }
+
+                    pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                        pdfDoc = pdf;
+                        totalPages = pdf.numPages;
+                        renderPage(currentPage);
+                        fetchSessions(currentPage);
+                    });
+
+                    // 翻页按钮
+                    let pdfHeader = document.querySelector('.pdf-header-v2');
+                    if (pdfHeader && !document.getElementById('pdf-prev')) {
+                        let prevBtn = document.createElement('button');
+                        prevBtn.id = 'pdf-prev';
+                        prevBtn.className = 'pdf-page-btn';
+                        prevBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 15L8 10L13 5" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                        let nextBtn = document.createElement('button');
+                        nextBtn.id = 'pdf-next';
+                        nextBtn.className = 'pdf-page-btn';
+                        nextBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M7 5L12 10L7 15" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                        pdfHeader.insertBefore(prevBtn, pdfHeader.firstChild);
+                        pdfHeader.appendChild(nextBtn);
+                        prevBtn.onclick = function() {
+                            if (currentPage > 1) {
+                                currentPage--;
+                                renderPage(currentPage);
+                                fetchSessions(currentPage);
+                            }
+                        };
+                        nextBtn.onclick = function() {
+                            if (currentPage < totalPages) {
+                                currentPage++;
+                                renderPage(currentPage);
+                                fetchSessions(currentPage);
+                            }
+                        };
+                    }
+
+                    // 监听文本选择（只监听textLayer）
+                    textLayerDiv.addEventListener('mouseup', function(e) {
+                        const selection = window.getSelection();
+                        selectedText = selection.toString().trim();
+                        lastMouseUpEvent = e;
+                        let btn = document.getElementById('confirm-selection-btn');
+                        if (!btn) {
+                            btn = createReferenceButton();
+                            btn.id = 'confirm-selection-btn';
+                            btn.onclick = async function() {
+                                if (selectedText) {
+                                    await fetch('/select_text', {
+                                        method: 'POST',
+                                        headers: {'Content-Type': 'application/json'},
+                                        body: JSON.stringify({text: selectedText, page: currentPage, bbox: null})
+                                    });
+                                    fetchSessions(currentPage);
+                                    currentReference = selectedText;
+                                    renderReferenceCard(selectedText);
+                                    hideReferenceButton(btn);
+                                    window.getSelection().removeAllRanges();
+                                    selectedText = '';
+                                }
+                            };
+                        }
+                        if (selectedText) {
+                            showReferenceButton(btn, e.pageX, e.pageY);
+                        } else {
+                            hideReferenceButton(btn);
+                        }
+                    });
+                    // 点击确认按钮，发送选中文本到后端，并刷新session堆叠区
+                    confirmBtn.onclick = async function() {
+                        if (selectedText) {
+                            await fetch('/select_text', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({text: selectedText, page: currentPage, bbox: null})
+                            });
+                            fetchSessions(currentPage);
+                            currentReference = selectedText;
+                            renderReferenceCard(selectedText);
+                            confirmBtn.style.display = 'none';
+                            window.getSelection().removeAllRanges();
+                            selectedText = '';
+                        }
+                    };
+                    // 点击其他区域时隐藏按钮
+                    document.addEventListener('mousedown', function(e) {
+                        if (e.target !== confirmBtn && e.target !== lastMouseUpEvent?.target) {
+                            confirmBtn.style.display = 'none';
+                        }
+                    });
+                </script>
+            {% else %}
+                <div class="pdf-upload-placeholder">Please upload a PDF document to view the summary</div>
+            {% endif %}
+        </div>
+    </main>
+    <div class="chat-right-panel-v2">
+        {% if pdf_summary %}
+        <div class="chat-summary-card-v2" id="article-overview-card" style="box-shadow:0 6px 32px rgba(80,120,255,0.18),0 2px 12px rgba(80,120,255,0.12);border-radius:22px;padding:32px 36px 24px 36px;border:1.5px solid #ececec;margin-left:-8px;margin-top:18px;margin-right:24px;position:relative;">
+            <div class="chat-summary-header-v2" style="display:flex;align-items:center;gap:10px;margin-bottom:6px;position:relative;">
+                <span class="chat-summary-title-v2" style="font-size:1.18em;font-weight:700;color:#181818;">Article Overview</span>
+                <span class="chat-summary-time-v2" style="font-size:1em;color:#b1b5c3;margin-left:auto;">{{ now().strftime('%-I:%M %p') if now else '' }}</span>
+                <button class="chat-summary-menu-btn-v2" id="article-overview-menu-btn" title="Menu" style="background:none;border:none;color:#b1b5c3;font-size:22px;cursor:pointer;padding:2px 8px;border-radius:6px;transition:background 0.2s;"><i class="fa fa-ellipsis-h"></i></button>
+                <div id="article-overview-menu" class="article-overview-menu" style="display:none;position:absolute;right:18px;top:38px;z-index:10;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:8px 0;min-width:80px;">
+                    <div id="article-overview-toggle" class="article-overview-menu-item" style="padding:8px 24px;cursor:pointer;">Hide</div>
+                </div>
+            </div>
+            <div class="chat-summary-content-v2 article-overview-animated" id="pdf-summary" style="color:#444;font-size:1.08em;line-height:1.7;margin-top:2px;"></div>
+            <button id="article-overview-more-btn" class="article-overview-more-btn" style="display:none;">Show more</button>
+        </div>
+        <style>
+        .article-overview-collapsed-content {
+            max-height: 0 !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            opacity: 0.2;
+            transition: max-height 0.3s, opacity 0.2s;
+        }
+        .article-overview-animated {
+            max-height: 300px;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(.4,0,.2,1), opacity 0.2s;
+            opacity: 1;
+            position: relative;
+        }
+        .article-overview-expanded-all {
+            max-height: none !important;
+            overflow: visible !important;
+        }
+        .article-overview-more-btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: none;
+            border: none;
+            color: #2563eb;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 1em;
+        }
+        </style>
+        <script>
+        function formatSummary(text) {
+            text = text.replace(/\*\*(\d+\.\s[^*]+):\*\*/g, '\n$1:');
+            text = text.replace(/\*\*/g, '');
+            text = text.replace(/ - /g, '\n- ');
+            return text.trim();
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            var summary = {{ pdf_summary|tojson|safe }};
+            document.getElementById('pdf-summary').innerText = formatSummary(summary);
+        });
+        </script>
+        {% endif %}
+        <div class="chat-session-stack-wrapper">
+            <div class="chat-session-stack"></div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% if mode != 'note_chat' %}
+<button id="one-click-note-btn" class="one-click-note-btn" title="One-click to generate structured notes">
+    <i class="fa fa-book"></i>
+</button>
+<div id="one-click-note-modal" class="one-click-note-modal" style="display:none;">
+    <div class="one-click-note-modal-content">
+        <span class="one-click-note-modal-close">&times;</span>
+        <div id="one-click-note-result" style="white-space:pre-wrap;"></div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('one-click-note-btn');
+    const modal = document.getElementById('one-click-note-modal');
+    const closeBtn = document.querySelector('.one-click-note-modal-close');
+    const resultDiv = document.getElementById('one-click-note-result');
+    if(btn) {
+        btn.onclick = async function() {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+            const res = await fetch('/export_notes', {method:'POST'});
+            const data = await res.json();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-book"></i>';
+            if(data.notes) {
+                window.location.href = '/note_chat?note=' + encodeURIComponent(data.notes);
+            }
+        };
+    }
+    if(closeBtn) {
+        closeBtn.onclick = function() {
+            modal.style.display = 'none';
+        };
+    }
+    if(modal) {
+        modal.onclick = function(e) {
+            if(e.target === modal) modal.style.display = 'none';
+        };
+    }
+});
+</script>
+{% endif %}
+<script>
+async function resetHistory() {
+    await fetch('/reset', {method: 'POST'});
+}
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var sidebar = document.querySelector('.sidebar-v2');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var expandBtn = document.getElementById('sidebar-expand-btn');
+    if (sidebar && toggleBtn && expandBtn) {
+        toggleBtn.onclick = function() {
+            sidebar.classList.toggle('sidebar-collapsed');
+            if (sidebar.classList.contains('sidebar-collapsed')) {
+                expandBtn.style.display = 'flex';
+            } else {
+                expandBtn.style.display = 'none';
+            }
+        };
+        expandBtn.onclick = function() {
+            sidebar.classList.remove('sidebar-collapsed');
+            expandBtn.style.display = 'none';
+        };
+        // 初始隐藏
+        expandBtn.style.display = sidebar.classList.contains('sidebar-collapsed') ? 'flex' : 'none';
+    }
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var menuBtn = document.getElementById('article-overview-menu-btn');
+    var menu = document.getElementById('article-overview-menu');
+    var toggle = document.getElementById('article-overview-toggle');
+    var card = document.getElementById('article-overview-card');
+    var summaryContent = document.getElementById('pdf-summary');
+    var moreBtn = document.getElementById('article-overview-more-btn');
+    let hidden = false;
+    let expandedAll = false;
+
+    function checkNeedMoreBtn() {
+        if (summaryContent.scrollHeight > 300 && !expandedAll && !hidden) {
+            moreBtn.style.display = 'block';
+        } else {
+            moreBtn.style.display = 'none';
+        }
+    }
+
+    if (menuBtn && menu && toggle && card && summaryContent && moreBtn) {
+        menuBtn.onclick = function(e) {
+            e.stopPropagation();
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            toggle.textContent = hidden ? 'Show' : 'Hide';
+        };
+        toggle.onclick = function() {
+            hidden = !hidden;
+            if (hidden) {
+                summaryContent.classList.add('article-overview-collapsed-content');
+                summaryContent.classList.remove('article-overview-animated');
+                summaryContent.classList.remove('article-overview-expanded-all');
+                summaryContent.classList.remove('article-overview-expanded-scroll');
+                moreBtn.style.display = 'none';
+                expandedAll = false;
+                toggle.textContent = 'Show';
+            } else {
+                summaryContent.classList.remove('article-overview-collapsed-content');
+                summaryContent.classList.add('article-overview-animated');
+                summaryContent.classList.remove('article-overview-expanded-all');
+                summaryContent.classList.remove('article-overview-expanded-scroll');
+                expandedAll = false;
+                setTimeout(checkNeedMoreBtn, 410);
+                toggle.textContent = 'Hide';
+            }
+            menu.style.display = 'none';
+        };
+        moreBtn.onclick = function() {
+            summaryContent.classList.add('article-overview-expanded-scroll');
+            summaryContent.classList.remove('article-overview-expanded-all');
+            moreBtn.style.display = 'none';
+            expandedAll = true;
+        };
+        document.body.addEventListener('click', function() {
+            menu.style.display = 'none';
+        });
+        menu.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+        setTimeout(checkNeedMoreBtn, 500);
+    }
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Knowledge Map 子项收起/展开
+    var kmToggle = document.getElementById('km-toggle');
+    var kmSection = document.getElementById('km-section');
+    if (kmToggle && kmSection) {
+        kmToggle.onclick = function(e) {
+            e.stopPropagation();
+            if (kmSection.style.display === 'none') {
+                kmSection.style.display = '';
+                kmToggle.textContent = '▼';
+            } else {
+                kmSection.style.display = 'none';
+                kmToggle.textContent = '▶';
+            }
+        };
+    }
+});
+</script>
+</body>
+</html> 

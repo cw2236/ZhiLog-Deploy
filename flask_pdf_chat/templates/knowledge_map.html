@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Knowledge Map - ZhiLog</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+    body { background: #fafbfc; }
+    .main-layout { display: flex; height: 100vh; }
+    .knowledge-map-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 40px; }
+    .knowledge-map-title { font-size: 2rem; font-weight: 600; margin-bottom: 32px; color: #222; }
+    .km-row { display: flex; align-items: flex-start; gap: 48px; margin-bottom: 36px; }
+    .km-card { background: #fff; border-radius: 18px; box-shadow: 0 2px 16px rgba(0,0,0,0.07); padding: 32px 36px 24px 36px; min-width: 320px; max-width: 360px; display: flex; flex-direction: column; align-items: center; position: relative; }
+    .km-card img { width: 120px; height: 120px; margin-bottom: 18px; }
+    .km-card-title { font-size: 1.13rem; font-weight: 600; color: #222; text-align: center; margin-bottom: 12px; }
+    .km-card-meta { display: flex; gap: 24px; color: #7b8591; font-size: 1.02em; margin-bottom: 8px; }
+    .km-card-footer { color: #b1b5c3; font-size: 0.98em; margin-top: 6px; }
+    .km-doc-list { display: flex; flex-direction: column; gap: 16px; }
+    .km-doc-card { background: #f7f9fa; border-radius: 12px; box-shadow: 0 1px 4px rgba(80,120,255,0.08); padding: 16px 20px; display: flex; align-items: center; gap: 16px; min-width: 220px; max-width: 260px; position: relative; }
+    .km-doc-card .fa-file { color: #2563eb; font-size: 1.2em; }
+    .km-doc-title { font-weight: 500; color: #222; font-size: 1.05em; }
+    .km-doc-meta { color: #b1b5c3; font-size: 0.95em; margin-left: 8px; }
+    .km-doc-users { display: flex; align-items: center; gap: -8px; margin-left: auto; }
+    .km-doc-user { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; object-fit: cover; margin-left: -8px; }
+    .km-link-btn { background: none; border: 1.5px dashed #b1b5c3; border-radius: 10px; color: #7b8591; padding: 12px 18px; font-size: 1em; cursor: pointer; margin-top: 12px; transition: border 0.2s, color 0.2s; }
+    .km-link-btn:hover { border-color: #2563eb; color: #2563eb; }
+    .km-dotted-line { border: 1.5px dashed #b1b5c3; border-radius: 6px; height: 48px; margin: 0 24px; }
+    .sidebar-section { max-width: 210px; }
+    .sidebar-item {
+        color: #7b8591;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+        display: block;
+        min-width: 0;
+    }
+    .sidebar-v2 {
+        transition: width 0.3s, min-width 0.3s, max-width 0.3s, box-shadow 0.3s, background 0.3s;
+        will-change: width, min-width, max-width;
+    }
+    #sidebar-expand-btn { display: none !important; }
+    .sidebar-collapsed + #sidebar-expand-btn { display: flex !important; }
+    .sidebar-collapsed {
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        overflow: hidden !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+    .thinking-dots { font-size:1em; color:#888; display:inline-block; }
+    .thinking-dots .dot { animation: blink 1s infinite alternate; opacity:0.2; }
+    .thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%{opacity:0.2;} 100%{opacity:1;} }
+    @media (max-width: 1100px) {
+      .km-row { flex-direction: column; gap: 24px; }
+    }
+    /* 可点击icon hover动效 */
+    .km-doc-card-v3 i.fa-download,
+    .km-doc-card-v3 i.fa-share-nodes,
+    .km-doc-card-v3 i.fa-plus,
+    .km-card-v3 i.fa-share-nodes {
+        transition: color 0.18s, transform 0.18s;
+        cursor: pointer;
+    }
+    .km-doc-card-v3 i.fa-download:hover,
+    .km-doc-card-v3 i.fa-share-nodes:hover,
+    .km-doc-card-v3 i.fa-plus:hover,
+    .km-card-v3 i.fa-share-nodes:hover {
+        color: #2563eb !important;
+        transform: scale(1.18);
+    }
+    /* 可点击文档卡片 hover 动效 */
+    .km-doc-card-v3[style*="cursor:pointer"],
+    .km-doc-card-v3.km-doc-card-hover,
+    .km-doc-card-v3.km-doc-card-link {
+        transition: box-shadow 0.18s, border-color 0.18s, transform 0.18s;
+        cursor: pointer;
+    }
+    .km-doc-card-v3[style*="cursor:pointer"]:hover,
+    .km-doc-card-v3.km-doc-card-hover:hover,
+    .km-doc-card-v3.km-doc-card-link:hover {
+        box-shadow: 0 4px 18px rgba(80,120,255,0.16),0 2px 8px rgba(80,120,255,0.10);
+        border-color: #2563eb !important;
+        transform: translateY(-2px) scale(1.03);
+    }
+    /* Link New Document to Map 卡片 hover 动效 */
+    .km-doc-card-v3[style*="dashed"]:hover {
+        border-color: #2563eb !important;
+        background: #eaf2ff;
+        color: #2563eb;
+        box-shadow: 0 4px 18px rgba(80,120,255,0.10),0 2px 8px rgba(80,120,255,0.08);
+        transform: scale(1.03);
+    }
+    .km-card-v3, .km-doc-card-v3 {
+        transition: box-shadow 0.18s, border-color 0.18s, transform 0.18s;
+    }
+    .km-card-v3:hover, .km-doc-card-v3:hover {
+        box-shadow: 0 6px 24px rgba(80,120,255,0.16),0 2px 8px rgba(80,120,255,0.12);
+        border-color: #2563eb !important;
+        transform: translateY(-2px) scale(1.03);
+        z-index: 2;
+    }
+    /* 在style中添加点击和hover效果 */
+    .sidebar-section-title.zhihub-clickable {
+      cursor: pointer;
+      transition: color 0.18s, background 0.18s;
+    }
+    .sidebar-section-title.zhihub-clickable:hover {
+      color: #2563eb;
+      background: #f0f4ff;
+    }
+    .sidebar-section-title.zhihub-clickable:active {
+      color: #1746a2;
+      background: #e0eaff;
+    }
+    </style>
+</head>
+<body>
+<div class="main-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar-v2">
+        <div class="sidebar-header-v2" style="display:flex;align-items:center;justify-content:space-between;padding:0 24px 18px 24px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <img src="/static/Logo.png" alt="logo" style="width:150px;height:60px;cursor:pointer;" onclick="window.location.href='/workspace'"/>
+            </div>
+            <button id="sidebar-toggle-btn" style="background:none;border:none;outline:none;cursor:pointer;padding:0;margin-left:8px;display:flex;align-items:center;">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="7" y="8" width="18" height="16" rx="6" stroke="#222" stroke-width="2"/><rect x="15" y="8" width="2" height="16" rx="1" fill="#222"/></svg>
+            </button>
+        </div>
+        <div class="sidebar-inner">
+            <div class="sidebar-group">
+                <div class="sidebar-section-title">Workspace</div>
+                <div class="sidebar-section">
+                    <div class="sidebar-folder" onclick="window.location.href='/workspace'"><i class="fa fa-folder"></i> Workspace</div>
+                    {% if pdf_filename %}
+                        <div class="sidebar-item{% if mode == 'main' %} sidebar-item-active{% endif %}" onclick="window.location.href='/'"><i class="fa fa-file-lines"></i> {{ pdf_filename }}</div>
+                        {% if has_note %}
+                            <div class="sidebar-item{% if mode == 'note_chat' %} sidebar-item-active{% endif %}" onclick="window.location.href='/note_chat'" style="padding-left:48px;font-size:0.97em;color:#2196F3;"><i class="fa fa-pen"></i> 1.1 Quick Notes</div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-section-title" style="font-weight:700;cursor:pointer;" onclick="window.location.href='/knowledge_map'">
+                    <i class="fa fa-project-diagram" style="margin-right:6px;"></i> Knowledge Map
+                    <span id="km-toggle" style="margin-left:8px;cursor:pointer;font-size:14px;">▶</span>
+                </div>
+                <div class="sidebar-section" id="km-section" style="padding-left:18px;display:none;">
+                    <div class="sidebar-item" onclick="window.location.href='/knowledge_map'">Cognitive Map of Generative</div>
+                    <div class="sidebar-item" onclick="window.location.href='/knowledge_map'">Agentic AI & ML Framework</div>
+                </div>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-section-title zhihub-clickable" onclick="return false;" style="font-weight:700;"><i class="fa fa-book" style="margin-right:6px;"></i> Zhi-Hub Community</div>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-section-title">Quick Action</div>
+                <div class="sidebar-section">
+                    <div class="sidebar-action" onclick="window.open('https://www.getzhilog.com/', '_blank')"><i class="fa fa-circle-exclamation"></i> Help</div>
+                    <div class="sidebar-action"><i class="fa fa-gear"></i> Settings</div>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-bottom-v2">
+            <img class="avatar-v2" src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=facearea&w=256&h=256" />
+            <div class="upgrade-v2">Upgrade Now !</div>
+        </div>
+    </aside>
+    <!-- 展开sidebar按钮 -->
+    <button id="sidebar-expand-btn" style="display:none;position:fixed;top:32px;left:0;z-index:2000;background:#fff;border:none;border-radius:0 12px 12px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08);width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none"><rect x="7" y="8" width="18" height="16" rx="6" stroke="#222" stroke-width="2"/><rect x="15" y="8" width="2" height="16" rx="1" fill="#222"/></svg>
+    </button>
+    <!-- 中间Knowledge Map区 -->
+    <main class="knowledge-map-center" style="padding:0;overflow:hidden;flex:1;">
+      <div class="knowledge-map-title" style="text-align:center;font-size:2rem;font-weight:600;margin:32px 0 24px 0;">Knowledge Map</div>
+      <div id="canvas-container" style="width:100%;height:100%;overflow:hidden;position:relative;touch-action:none;display:none;">
+        <div id="d3-canvas" style="width:100%;height:100%;position:relative;">
+          <div class="km-row">
+            <!-- 第一组卡片 -->
+            <div class="km-card-v3" style="background:#fff;border-radius:24px;box-shadow:0 4px 18px rgba(80,120,255,0.10),0 1.5px 8px rgba(80,120,255,0.08);padding:20px 18px 16px 18px;min-width:260px;max-width:320px;display:flex;flex-direction:column;align-items:center;position:relative;">
+                <div style="position:absolute;top:14px;right:18px;">
+                    <i class="fa fa-share-nodes" style="font-size:1.1rem;color:#22314a;opacity:0.7;cursor:pointer;"></i>
+                </div>
+                <img src="/static/image 370.png" alt="Cognitive Map" style="width:80%;max-width:180px;border-radius:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(80,120,255,0.08);background:#fff;" />
+                <div style="font-size:0.9rem;font-weight:700;color:#181818;font-family:'Georgia',serif;text-align:center;margin-bottom:12px;margin-top:4px;">Cognitive Map of Generative Agents</div>
+                <div style="width:100%;height:1px;background:#e5e7eb;margin-bottom:10px;"></div>
+                <div style="display:flex;justify-content:space-between;width:100%;margin-bottom:10px;">
+                    <div style="flex:1;text-align:center;">
+                        <div style="color:#9ca3af;font-size:0.92rem;font-weight:500;">Total Article</div>
+                        <div style="font-size:1rem;font-weight:700;color:#222;">2</div>
+                    </div>
+                    <div style="width:1px;background:#e5e7eb;margin:0 10px;"></div>
+                    <div style="flex:1;text-align:center;">
+                        <div style="color:#9ca3af;font-size:0.92rem;font-weight:500;">Total Article</div>
+                        <div style="font-size:1rem;font-weight:700;color:#222;">19</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:flex-end;width:100%;margin-top:4px;">
+                    <img src="https://randomuser.me/api/portraits/men/32.jpg" style="width:20px;height:20px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1.5px #e0e7ef;object-fit:cover;margin-right:6px;" />
+                    <span style="color:#9ca3af;font-size:0.82rem;font-weight:500;">Last View | May 9, 2025</span>
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:24px;align-items:center;">
+                <div class="km-doc-list">
+                    <div class="km-doc-card-v3" style="background:#f4f8fd;border-radius:20px;box-shadow:0 2px 8px rgba(80,120,255,0.10),0 1px 4px rgba(80,120,255,0.08);padding:22px 20px 22px 20px;display:flex;flex-direction:column;justify-content:center;min-width:280px;max-width:340px;margin-bottom:16px;position:relative;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                                <div style="background:#162d4b;border-radius:8px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-file-pdf" style="font-size:18px;color:#fff;"></i>
+                                </div>
+                                <span style="font-size:1.02rem;font-weight:700;color:#181818;font-family:'Georgia',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;display:inline-block;">Generative Agent.pdf</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-left:12px;flex-shrink:0;">
+                                <i class="fa fa-download" style="font-size:1rem;color:#22314a;cursor:pointer;"></i>
+                                <i class="fa fa-share-nodes" style="font-size:1rem;color:#22314a;cursor:pointer;"></i>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+                            <span style="color:#9ca3af;font-size:0.85rem;font-weight:600;">Edited | May 9, 2025</span>
+                            <div style="display:flex;align-items:center;gap:-6px;">
+                                <img src="https://randomuser.me/api/portraits/men/32.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #e0e7ef;object-fit:cover;position:relative;z-index:4;" />
+                                <img src="https://randomuser.me/api/portraits/women/44.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #ffe066;object-fit:cover;position:relative;z-index:3;margin-left:-8px;" />
+                                <img src="https://randomuser.me/api/portraits/men/33.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #a0eaff;object-fit:cover;position:relative;z-index:2;margin-left:-8px;" />
+                                <img src="https://randomuser.me/api/portraits/men/34.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #222;object-fit:cover;position:relative;z-index:1;margin-left:-8px;" />
+                                <span style="position:absolute;right:32px;bottom:2px;width:7px;height:7px;background:#6fff3e;border-radius:50%;border:1.5px solid #fff;z-index:5;"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="km-doc-card-v3" style="background:#f4f8fd;border-radius:20px;box-shadow:0 2px 8px rgba(80,120,255,0.10),0 1px 4px rgba(80,120,255,0.08);padding:22px 20px 22px 20px;display:flex;flex-direction:column;justify-content:center;min-width:280px;max-width:340px;margin-bottom:16px;position:relative;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                                <div style="background:#162d4b;border-radius:8px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-file-pdf" style="font-size:18px;color:#fff;"></i>
+                                </div>
+                                <span style="font-size:1.02rem;font-weight:700;color:#181818;font-family:'Georgia',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;display:inline-block;">AI Agent.pdf</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-left:12px;flex-shrink:0;">
+                                <i class="fa fa-download" style="font-size:1rem;color:#22314a;cursor:pointer;"></i>
+                                <i class="fa fa-share-nodes" style="font-size:1rem;color:#22314a;cursor:pointer;"></i>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+                            <span style="color:#9ca3af;font-size:0.85rem;font-weight:600;">Edited | May 9, 2025</span>
+                            <div style="display:flex;align-items:center;gap:-6px;">
+                                <img src="https://randomuser.me/api/portraits/men/35.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #e0e7ef;object-fit:cover;position:relative;z-index:2;" />
+                                <img src="https://randomuser.me/api/portraits/women/45.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #ffe066;object-fit:cover;position:relative;z-index:1;margin-left:-8px;" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="km-doc-card-v3" style="background:#fff;border:2px dashed #b1b5c3;border-radius:20px;padding:20px 16px 20px 16px;display:flex;align-items:center;justify-content:center;min-width:220px;max-width:260px;margin-bottom:16px;cursor:pointer;opacity:0.92;transition:box-shadow 0.2s;">
+                        <i class="fa fa-plus" style="font-size:1.2rem;color:#b1b5c3;margin-right:10px;"></i>
+                        <span style="color:#b1b5c3;font-size:1rem;font-weight:600;">Link New Document to Map</span>
+                    </div>
+                </div>
+            </div>
+          </div>
+          <div class="km-row">
+            <!--
+            <div class="km-card-v3" style="background:#fff;border-radius:24px;box-shadow:0 4px 18px rgba(80,120,255,0.10),0 1.5px 8px rgba(80,120,255,0.08);padding:20px 18px 16px 18px;min-width:260px;max-width:320px;display:flex;flex-direction:column;align-items:center;position:relative;">
+                <div style="position:absolute;top:14px;right:18px;">
+                    <i class="fa fa-share-nodes" style="font-size:1.1rem;color:#22314a;opacity:0.7;cursor:pointer;"></i>
+                </div>
+                <img src="/static/image 365.png" alt="Agentic AI & ML" style="width:80%;max-width:180px;border-radius:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(80,120,255,0.08);background:#fff;" />
+                <div style="font-size:0.9rem;font-weight:700;color:#181818;font-family:'Georgia',serif;text-align:center;margin-bottom:12px;margin-top:4px;">Agentic AI & ML Framework</div>
+                <div style="width:100%;height:1px;background:#e5e7eb;margin-bottom:10px;"></div>
+                <div style="display:flex;justify-content:space-between;width:100%;margin-bottom:10px;">
+                    <div style="flex:1;text-align:center;">
+                        <div style="color:#9ca3af;font-size:0.92rem;font-weight:500;">Total Article</div>
+                        <div style="font-size:1rem;font-weight:700;color:#222;">2</div>
+                    </div>
+                    <div style="width:1px;background:#e5e7eb;margin:0 10px;"></div>
+                    <div style="flex:1;text-align:center;">
+                        <div style="color:#9ca3af;font-size:0.92rem;font-weight:500;">Total Nodes</div>
+                        <div style="font-size:1rem;font-weight:700;color:#222;">19</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:flex-end;width:100%;margin-top:4px;">
+                    <img src="https://randomuser.me/api/portraits/men/32.jpg" style="width:20px;height:20px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1.5px #e0e7ef;object-fit:cover;margin-right:6px;" />
+                    <span style="color:#9ca3af;font-size:0.82rem;font-weight:500;">Last View | May 9, 2025</span>
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:24px;align-items:center;">
+                <div class="km-doc-list">
+                    <div class="km-doc-card-v3" style="background:#f4f8fd;border-radius:20px;box-shadow:0 2px 8px rgba(80,120,255,0.10),0 1px 4px rgba(80,120,255,0.08);padding:22px 20px 22px 20px;display:flex;flex-direction:column;justify-content:center;min-width:280px;max-width:340px;margin-bottom:16px;position:relative;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                                <div style="background:#162d4b;border-radius:8px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-file-pdf" style="font-size:18px;color:#fff;"></i>
+                                </div>
+                                <span style="font-size:1.02rem;font-weight:700;color:#181818;font-family:'Georgia',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;display:inline-block;">Generative Agent.pdf</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-left:12px;flex-shrink:0;">
+                                <i class="fa fa-download" style="font-size:1rem;color:#22314a;cursor:pointer;"></i>
+                                <i class="fa fa-share-nodes" style="font-size:1rem;color:#22314a;cursor:pointer;"></i>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+                            <span style="color:#9ca3af;font-size:0.85rem;font-weight:600;">Edited | May 9, 2025</span>
+                            <div style="display:flex;align-items:center;gap:-6px;">
+                                <img src="https://randomuser.me/api/portraits/men/36.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #e0e7ef;object-fit:cover;position:relative;z-index:3;" />
+                                <img src="https://randomuser.me/api/portraits/women/46.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #ffe066;object-fit:cover;position:relative;z-index:2;margin-left:-8px;" />
+                                <img src="https://randomuser.me/api/portraits/men/37.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #222;object-fit:cover;position:relative;z-index:1;margin-left:-8px;" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="km-doc-card-v3" style="background:#f4f8fd;border-radius:20px;box-shadow:0 2px 8px rgba(80,120,255,0.10),0 1px 4px rgba(80,120,255,0.08);padding:22px 20px 22px 20px;display:flex;flex-direction:column;justify-content:center;min-width:280px;max-width:340px;margin-bottom:16px;position:relative;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                                <div style="background:#162d4b;border-radius:8px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-file-pdf" style="font-size:18px;color:#fff;"></i>
+                                </div>
+                                <span style="font-size:1.02rem;font-weight:700;color:#181818;font-family:'Georgia',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;display:inline-block;">ML Material.pdf</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-left:12px;flex-shrink:0;">
+                                <i class="fa fa-download" style="font-size:1rem;color:#22314a;cursor:pointer;"></i>
+                                <i class="fa fa-share-nodes" style="font-size:1rem;color:#22314a;cursor:pointer;"></i>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+                            <span style="color:#9ca3af;font-size:0.85rem;font-weight:600;">Edited | May 9, 2025</span>
+                            <div style="display:flex;align-items:center;gap:-6px;">
+                                <img src="https://randomuser.me/api/portraits/men/38.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #e0e7ef;object-fit:cover;position:relative;z-index:2;" />
+                                <img src="https://randomuser.me/api/portraits/women/47.jpg" style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #ffe066;object-fit:cover;position:relative;z-index:1;margin-left:-8px;" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="km-doc-card-v3" style="background:#fff;border:2px dashed #b1b5c3;border-radius:20px;padding:20px 16px 20px 16px;display:flex;align-items:center;justify-content:center;min-width:220px;max-width:260px;margin-bottom:16px;cursor:pointer;opacity:0.92;transition:box-shadow 0.2s;">
+                        <i class="fa fa-plus" style="font-size:1.2rem;color:#b1b5c3;margin-right:10px;"></i>
+                        <span style="color:#b1b5c3;font-size:1rem;font-weight:600;">Link New Document to Map</span>
+                    </div>
+                </div>
+            </div>
+            -->
+          </div>
+        </div>
+      </div>
+    </main>
+    <!-- 右侧Chatbot区，完全复用workspace.html结构 -->
+    <div class="chat-right-panel-v2">
+        <div class="chat-header-v2">
+            <span class="chat-title-v2">ZhiLog</span>
+        </div>
+        <div id="chat-messages" class="chat-message-v2">
+          <div class="chat-bubble assistant" style="margin-top:24px;">
+            <div class="chat-message-header">
+              <img class="chat-avatar" src="/static/bot.png" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+              <span class="chat-nickname">ZhiLog</span>
+              <span class="chat-time">{{ now.strftime('%H:%M') if now else '' }}</span>
+            </div>
+            <div class="chat-message-content" style="white-space:pre-line;">{{ welcome_msg|safe }}</div>
+          </div>
+        </div>
+        <div id="reference-area"></div>
+        <div class="chat-input-row-v2" style="margin-bottom:32px;padding-left:24px;padding-right:24px;display:flex;justify-content:center;">
+            <input type="text" class="chat-input-v2" id="chat-input" placeholder="Message to ZhiLog..." style="width:calc(100% - 60px);max-width:420px;">
+            <button class="chat-send-btn-v2" id="chat-send-btn"><i class="fa fa-paper-plane"></i> </button>
+        </div>
+    </div>
+</div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const isNoPDF = {{ 'true' if not pdf_filename else 'false' }};
+let currentReference = '';
+function renderReferenceCard(text) {
+    let refArea = document.getElementById('reference-area');
+    if (!refArea) return;
+    refArea.innerHTML = '';
+    if (!text) return;
+    let refCard = document.createElement('div');
+    refCard.className = 'chat-reference-card-v2';
+    refCard.innerHTML = `<span class='chat-reference-icon-v2'>↳</span><span class='chat-reference-content-v2'>${text}</span><button class='chat-reference-close-v2'>✕</button>`;
+    refArea.appendChild(refCard);
+    refCard.querySelector('.chat-reference-close-v2').onclick = function() {
+        currentReference = '';
+        renderReferenceCard('');
+    };
+}
+// 聊天历史
+let chatHistory = [];
+function renderChat(history) {
+    const chatBox = document.getElementById('chat-messages');
+    chatBox.innerHTML = '';
+    for (const msg of history) {
+        const div = document.createElement('div');
+        div.className = 'chat-message-card ' + (msg.role === 'user' ? 'user' : 'assistant');
+        let refHtml = '';
+        if (msg.role === 'user' && msg.reference) {
+            refHtml = `<div class='chat-reference-card-v2'><span class='chat-reference-icon-v2'>↳</span><span class='chat-reference-content-v2'>${msg.reference}</span></div>`;
+        }
+        div.innerHTML = `
+            <div class="chat-message-header">
+                <img class="chat-avatar" src="${msg.role==='user'?'https://randomuser.me/api/portraits/men/32.jpg':'/static/bot.png'}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+                <span class="chat-nickname">${msg.role==='user'?'Zuo':'ZhiLog'}</span>
+                <span class="chat-time">${msg.time||''}</span>
+            </div>
+            ${refHtml}<div class="chat-message-content">${msg.content}</div>
+        `;
+        chatBox.appendChild(div);
+    }
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+// 首条欢迎消息
+chatHistory = [
+    {role:'assistant', content: `{{ welcome_msg|safe }}`, time: "{{ now.strftime('%H:%M') if now else '' }}"}
+];
+renderChat(chatHistory);
+
+let hasInteracted = false;
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+    input.value = '';
+    document.getElementById('chat-send-btn').disabled = true;
+    const reference = currentReference;
+    const now = new Date();
+    const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+    // 没有上传PDF时，用户说什么都跳转到上传页面
+    if (isNoPDF) {
+        chatHistory.push({role:'user', content:message, time: timeStr});
+        renderChat(chatHistory);
+        setTimeout(() => {
+            chatHistory.push({role:'assistant', content:'Okay, please wait a moment.', time: timeStr});
+            renderChat(chatHistory);
+            setTimeout(() => {
+                window.location.href = '/?auto_upload=1';
+            }, 2000);
+        }, 200);
+        document.getElementById('chat-send-btn').disabled = false;
+        return;
+    }
+    // 检查是否为"Yes please"
+    if (message.toLowerCase() === 'yes please') {
+        chatHistory.push({role:'user', content:message, time: timeStr});
+        renderChat(chatHistory);
+        setTimeout(() => {
+            chatHistory.push({role:'assistant', content:'Opening your document, please wait...', time: timeStr});
+            renderChat(chatHistory);
+        }, 200);
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 2200);
+        document.getElementById('chat-send-btn').disabled = false;
+        return;
+    }
+    // 正常对话
+    chatHistory.push({role:'user', content:message, time: timeStr});
+    renderChat(chatHistory);
+    // 首次互动后，先回复构建提示，2秒后再显示内容和正常回复
+    if (!hasInteracted) {
+        chatHistory.push({role:'assistant', content:"Sure! I'm constructing your knowledge map now. Please wait a moment...", time: timeStr});
+        renderChat(chatHistory);
+        setTimeout(async () => {
+            document.getElementById('canvas-container').style.display = 'block';
+            hasInteracted = true;
+            // 继续正常回复
+            const res = await fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message, reference})
+            });
+            const data = await res.json();
+            if (data.chat_history && data.chat_history.length > 0) {
+                const last = data.chat_history[data.chat_history.length-1];
+                chatHistory.push({role:'assistant', content:last.content, time: timeStr});
+            }
+            renderChat(chatHistory);
+            document.getElementById('chat-send-btn').disabled = false;
+            currentReference = '';
+            renderReferenceCard('');
+        }, 2000);
+        return;
+    }
+    // 非首次互动，直接正常回复
+    const res = await fetch('/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message, reference})
+    });
+    const data = await res.json();
+    if (data.chat_history && data.chat_history.length > 0) {
+        const last = data.chat_history[data.chat_history.length-1];
+        chatHistory.push({role:'assistant', content:last.content, time: timeStr});
+    }
+    renderChat(chatHistory);
+    document.getElementById('chat-send-btn').disabled = false;
+    currentReference = '';
+    renderReferenceCard('');
+}
+document.getElementById('chat-send-btn').onclick = sendMessage;
+document.getElementById('chat-input').onkeydown = function(e) { if (e.key === 'Enter') sendMessage(); };
+// 画布拖拽缩放+"先排好队，拖动后变自由"
+(function(){
+  // D3画布缩放/平移
+  const d3Canvas = d3.select('#d3-canvas');
+  const container = d3.select('#canvas-container');
+  let zoom = d3.zoom()
+    .scaleExtent([0.4, 2.5])
+    .on('zoom', (event) => {
+      d3Canvas.style('transform', `scale(${event.transform.k}) translate(${event.transform.x/event.transform.k}px,${event.transform.y/event.transform.k}px)`);
+    });
+  container.call(zoom);
+
+  // 复制所有computed style
+  function copyComputedStyle(src, dest) {
+    const computed = window.getComputedStyle(src);
+    for (let key of computed) {
+      dest.style.setProperty(key, computed.getPropertyValue(key), computed.getPropertyPriority(key));
+    }
+  }
+  function makeDraggable(card) {
+    let dragging = false, dragStart = {x:0,y:0}, cardStart = {x:0,y:0};
+    let hasBecomeAbsolute = false;
+    let placeholder = null;
+    let flexWrapper = null;
+    card.addEventListener('mousedown', function(e){
+      if(e.button!==0) return;
+      dragging = true;
+      hasBecomeAbsolute = false;
+      dragStart = {x:e.clientX, y:e.clientY};
+      // 拖拽前插入占位符并包裹flex容器
+      if (!hasBecomeAbsolute && !placeholder && card.parentElement && getComputedStyle(card).position !== 'absolute') {
+        placeholder = document.createElement('div');
+        copyComputedStyle(card, placeholder);
+        placeholder.style.visibility = 'hidden';
+        // 新建flex容器包裹卡片和占位符
+        flexWrapper = document.createElement('div');
+        flexWrapper.style.display = 'flex';
+        flexWrapper.style.alignItems = 'center';
+        flexWrapper.style.justifyContent = '';
+        flexWrapper.style.gap = getComputedStyle(card.parentElement).gap || '24px';
+        card.parentElement.insertBefore(flexWrapper, card);
+        flexWrapper.appendChild(card);
+        flexWrapper.appendChild(placeholder);
+      }
+      e.stopPropagation();
+    });
+    window.addEventListener('mousemove', function(e){
+      if(dragging) {
+        // 首次拖动时转为absolute并插入d3-canvas
+        if (!hasBecomeAbsolute && getComputedStyle(card).position !== 'absolute') {
+          const rect = card.getBoundingClientRect();
+          const canvasRect = d3.select('#d3-canvas').node().getBoundingClientRect();
+          const transform = d3.zoomTransform(d3.select('#d3-canvas').node());
+          const left = (rect.left - canvasRect.left - transform.x) / transform.k;
+          const top = (rect.top - canvasRect.top - transform.y) / transform.k;
+          copyComputedStyle(card, card); // 复制所有样式
+          card.style.position = 'absolute';
+          card.style.left = left + 'px';
+          card.style.top = top + 'px';
+          card.style.width = rect.width + 'px';
+          card.style.height = rect.height + 'px';
+          d3.select('#d3-canvas').node().appendChild(card);
+          cardStart = {x: left, y: top};
+          hasBecomeAbsolute = true;
+        }
+        const transform = d3.zoomTransform(d3.select('#d3-canvas').node());
+        let dx = (e.clientX-dragStart.x)/transform.k;
+        let dy = (e.clientY-dragStart.y)/transform.k;
+        card.style.left = (cardStart.x+dx)+"px";
+        card.style.top = (cardStart.y+dy)+"px";
+        card.style.zIndex = 10;
+      }
+    });
+    window.addEventListener('mouseup', function(){
+      if(dragging) { dragging=false; card.style.zIndex=''; }
+    });
+  }
+  // 让所有卡片可拖拽
+  function enableAllDraggable() {
+    document.querySelectorAll('.km-card-v3, .km-doc-card-v3').forEach(makeDraggable);
+  }
+  enableAllDraggable();
+})();
+document.addEventListener('DOMContentLoaded', function() {
+  var kmToggle = document.getElementById('km-toggle');
+  var kmSection = document.getElementById('km-section');
+  if (kmToggle && kmSection) {
+    kmToggle.onclick = function(e) {
+      e.stopPropagation();
+      if (kmSection.style.display === 'none' || kmSection.style.display === '') {
+        kmSection.style.display = 'block';
+        kmToggle.textContent = '▼';
+      } else {
+        kmSection.style.display = 'none';
+        kmToggle.textContent = '▶';
+      }
+    };
+  }
+});
+</script>
+</body>
+</html>

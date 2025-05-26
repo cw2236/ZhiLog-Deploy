@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Workspace - ZhiLog</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+    body { background: #fafbfc; }
+    .main-layout { display: flex; height: 100vh; }
+    .workspace-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 40px; }
+    .workspace-title { font-size: 2rem; font-weight: 600; margin-bottom: 32px; color: #222; }
+    .workspace-card { background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.07); padding: 32px 40px; min-width: 400px; max-width: 480px; margin-bottom: 32px; }
+    .workspace-card .file-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .workspace-card .file-info { display: flex; align-items: center; }
+    .workspace-card .file-icon { font-size: 1.5rem; color: #2196F3; margin-right: 12px; }
+    .workspace-card .file-name { font-weight: 500; font-size: 1.1rem; }
+    .workspace-card .file-actions { display: flex; align-items: center; gap: 12px; }
+    .workspace-card .file-action-btn { background: none; border: none; cursor: pointer; color: #7b8591; font-size: 1.1rem; }
+    .workspace-card .file-action-btn:hover { color: #2196F3; }
+    .workspace-card .file-meta { font-size: 0.95rem; color: #b1b5c3; margin-bottom: 8px; }
+    .workspace-card .file-user { display: flex; align-items: center; gap: 8px; }
+    .workspace-card .avatar { width: 28px; height: 28px; border-radius: 50%; }
+    .workspace-card .divider { border-left: 2px dashed #e0e3e8; height: 32px; margin: 0 auto; }
+    .workspace-card .note-row { display: flex; align-items: center; justify-content: space-between; }
+    .workspace-card .note-title { font-weight: 500; font-size: 1.1rem; }
+    .workspace-card .note-hash { color: #b1b5c3; font-size: 0.95rem; margin-left: 8px; }
+    .sidebar-section { max-width: 210px; }
+    .sidebar-item {
+        color: #7b8591;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+        display: block;
+        min-width: 0;
+    }
+    </style>
+</head>
+<body>
+<div class="main-layout">
+    <!-- Sidebar（复用index.html的sidebar结构） -->
+    <aside class="sidebar-v2">
+        <div class="sidebar-header-v2" style="display:flex;align-items:center;justify-content:space-between;padding:0 24px 18px 24px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <img src="/static/Logo.png" alt="logo" style="width:150px;height:60px;"/>
+            </div>
+            <button id="sidebar-toggle-btn" style="background:none;border:none;outline:none;cursor:pointer;padding:0;margin-left:8px;display:flex;align-items:center;">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="7" y="8" width="18" height="16" rx="6" stroke="#222" stroke-width="2"/><rect x="15" y="8" width="2" height="16" rx="1" fill="#222"/></svg>
+            </button>
+        </div>
+        <div class="sidebar-inner">
+            <!-- <button class="new-chat-btn-v2"><i class="fa fa-plus"></i> New chat</button> -->
+            <div class="sidebar-group">
+                <div class="sidebar-section-title">Workspace</div>
+                <div class="sidebar-section">
+                    <div class="sidebar-folder" onclick="window.location.href='/workspace'"><i class="fa fa-folder"></i> Workspace</div>
+                    {% if pdf_filename %}
+                        <div class="sidebar-item{% if mode == 'main' %} sidebar-item-active{% endif %}" onclick="window.location.href='/'"><i class="fa fa-file-lines"></i> {{ pdf_filename }}</div>
+                        {% if has_note %}
+                            <div class="sidebar-item{% if mode == 'note_chat' %} sidebar-item-active{% endif %}" onclick="window.location.href='/note_chat'" style="padding-left:48px;font-size:0.97em;color:#2196F3;"><i class="fa fa-pen"></i> 1.1 Quick Notes</div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            <!-- 新增 Knowledge Map 分组 -->
+            <div class="sidebar-group">
+                <div class="sidebar-section-title" style="font-weight:700;cursor:pointer;" onclick="window.location.href='/knowledge_map'">
+                    <i class="fa fa-project-diagram" style="margin-right:6px;"></i> Knowledge Map
+                    <span id="km-toggle" style="margin-left:8px;cursor:pointer;font-size:14px;">▼</span>
+                </div>
+                <div class="sidebar-section" id="km-section" style="padding-left:18px;display:none;">
+                    <div class="sidebar-item" onclick="window.location.href='/knowledge_map'">Cognitive Map of Generative</div>
+                    <div class="sidebar-item" onclick="window.location.href='/knowledge_map'">Agentic AI & ML Framework</div>
+                </div>
+            </div>
+            <!-- 新增 Zhi-Hub Community 分组 -->
+            <div class="sidebar-group">
+                <div class="sidebar-section-title" style="font-weight:700;"><i class="fa fa-book" style="margin-right:6px;"></i> Zhi-Hub Community</div>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-section-title">Quick Action</div>
+                <div class="sidebar-section">
+                    <div class="sidebar-action" onclick="window.open('https://www.getzhilog.com/', '_blank')"><i class="fa fa-circle-exclamation"></i> Help</div>
+                    <div class="sidebar-action"><i class="fa fa-gear"></i> Settings</div>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-bottom-v2">
+            <img class="avatar-v2" src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=facearea&w=256&h=256" />
+            <div class="upgrade-v2">Upgrade Now !</div>
+        </div>
+    </aside>
+    <!-- 中间Workspace区 -->
+    <main class="workspace-center">
+        <div class="workspace-title">Workspace</div>
+        {% if pdf_filename %}
+        <div class="workspace-card">
+            <div class="file-row">
+                <div class="file-info">
+                    <i class="fa fa-file-pdf file-icon"></i>
+                    <span class="file-name" style="cursor:pointer;color:#2196F3;text-decoration:underline;" onclick="window.location.href='/'">{{ pdf_filename }}</span>
+                </div>
+                <div class="file-actions">
+                    <button class="file-action-btn" title="Download"><i class="fa fa-download"></i></button>
+                    <button class="file-action-btn" title="Share"><i class="fa fa-share-nodes"></i></button>
+                </div>
+            </div>
+            <div class="file-meta">Edited | <span id="workspace-edit-time"></span></div>
+            <div class="file-user">
+                <img class="avatar" src="https://randomuser.me/api/portraits/men/32.jpg" />
+            </div>
+            <div class="divider"></div>
+            <div class="note-row" style="cursor:pointer;" onclick="window.location.href='/note_chat'">
+                <div>
+                    <span style="color:#b1b5c3;font-weight:500;font-size:1.1em;">Note</span>
+                    <span class="note-tag" style="color:#b1b5c3;"># Deployable sensor</span>
+                    <span class="note-tag" style="color:#b1b5c3;"># Electrical noise</span>
+                </div>
+                <button class="file-action-btn" title="Download Note"><i class="fa fa-download"></i></button>
+            </div>
+            <div class="note-brief" style="color:#444;font-size:1rem;cursor:pointer;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" onclick="window.location.href='/note_chat'">
+                {{ last_note[:100] }}{% if last_note|length > 20 %}...{% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div style="color:#b1b5c3;font-size:1.2rem;margin-top:80px;">No histroy found. Please tell ZhiLog what you wanna do .</div>
+        <div style="color:#b1b5c3;font-size:1.2rem;margin-top:80px;">We will have you prepared !</div>
+
+        
+        {% endif %}
+    </main>
+    <!-- 右侧Chatbot区，复用index.html的chatbot结构 -->
+    <div class="chat-right-panel-v2">
+        <div class="chat-header-v2">
+            <span class="chat-title-v2">ZhiLog</span>
+        </div>
+        <div id="chat-messages" class="chat-message-v2">
+          <div class="chat-bubble assistant" style="margin-top:24px;">
+            <div class="chat-message-header">
+              <img class="chat-avatar" src="/static/bot.png" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+              <span class="chat-nickname">ZhiLog</span>
+              <span class="chat-time">{{ now.strftime('%H:%M') if now else '' }}</span>
+            </div>
+            <div class="chat-message-content" style="white-space:pre-line;">{{ welcome_msg|safe }}</div>
+          </div>
+        </div>
+        <div id="reference-area"></div>
+        <div class="chat-input-row-v2" style="margin-bottom:32px;padding-left:24px;padding-right:24px;display:flex;justify-content:center;">
+            <input type="text" class="chat-input-v2" id="chat-input" placeholder="Message to ZhiLog..." style="width:calc(100% - 60px);max-width:420px;">
+            <button class="chat-send-btn-v2" id="chat-send-btn"><i class="fa fa-paper-plane"></i> </button>
+        </div>
+    </div>
+</div>
+<script>
+const isNoPDF = "{{ 'true' if not pdf_filename else 'false' }}";
+let currentReference = '';
+function renderReferenceCard(text) {
+    let refArea = document.getElementById('reference-area');
+    if (!refArea) return;
+    refArea.innerHTML = '';
+    if (!text) return;
+    let refCard = document.createElement('div');
+    refCard.className = 'chat-reference-card-v2';
+    refCard.innerHTML = `<span class='chat-reference-icon-v2'>↳</span><span class='chat-reference-content-v2'>${text}</span><button class='chat-reference-close-v2'>✕</button>`;
+    refArea.appendChild(refCard);
+    refCard.querySelector('.chat-reference-close-v2').onclick = function() {
+        currentReference = '';
+        renderReferenceCard('');
+    };
+}
+// 聊天历史
+let chatHistory = [];
+function renderChat(history) {
+    const chatBox = document.getElementById('chat-messages');
+    chatBox.innerHTML = '';
+    for (const msg of history) {
+        const div = document.createElement('div');
+        div.className = 'chat-message-card ' + (msg.role === 'user' ? 'user' : 'assistant');
+        let refHtml = '';
+        if (msg.role === 'user' && msg.reference) {
+            refHtml = `<div class='chat-reference-card-v2'><span class='chat-reference-icon-v2'>↳</span><span class='chat-reference-content-v2'>${msg.reference}</span></div>`;
+        }
+        div.innerHTML = `
+            <div class="chat-message-header">
+                <img class="chat-avatar" src="${msg.role==='user'?'https://randomuser.me/api/portraits/men/32.jpg':'/static/bot.png'}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+                <span class="chat-nickname">${msg.role==='user'?'Zuo':'ZhiLog'}</span>
+                <span class="chat-time">${msg.time||''}</span>
+            </div>
+            ${refHtml}<div class="chat-message-content">${msg.content}</div>
+        `;
+        chatBox.appendChild(div);
+    }
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+// 首条欢迎消息
+chatHistory = [
+    {role:'assistant', content: `{{ welcome_msg|safe }}`, time: "{{ now.strftime('%H:%M') if now else '' }}"}
+];
+renderChat(chatHistory);
+
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+    input.value = '';
+    document.getElementById('chat-send-btn').disabled = true;
+    const reference = currentReference;
+    const now = new Date();
+    const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+    
+    // 添加用户消息
+    chatHistory.push({role:'user', content:message, time: timeStr});
+    renderChat(chatHistory);
+    
+    // 调用 agent 接口
+    const res = await fetch('/agent_chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message})
+    });
+    
+    const data = await res.json();
+    if (data.error) {
+        chatHistory.push({role:'assistant', content: data.error, time: timeStr});
+    } else {
+        // 智能跳转上传页
+        if (data.tool_used === 'goto_upload_page') {
+            window.location.href = '/';
+            return;
+        }
+        // 添加 agent 回复
+        chatHistory.push({role:'assistant', content: data.response, time: timeStr});
+        // 如果有引导性问题，也添加为 assistant 消息
+        if (data.guide_question) {
+            chatHistory.push({role:'assistant', content: data.guide_question, time: timeStr});
+        }
+    }
+    
+    renderChat(chatHistory);
+    document.getElementById('chat-send-btn').disabled = false;
+    currentReference = '';
+    renderReferenceCard('');
+}
+document.getElementById('chat-send-btn').onclick = sendMessage;
+document.getElementById('chat-input').onkeydown = function(e) { if (e.key === 'Enter') sendMessage(); };
+
+// 设置 workspace 卡片时间为当前时间
+function updateWorkspaceEditTime() {
+    const el = document.getElementById('workspace-edit-time');
+    if (el) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = (now.getMonth()+1).toString().padStart(2,'0');
+        const d = now.getDate().toString().padStart(2,'0');
+        el.textContent = `${y}-${m}-${d} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+    }
+}
+updateWorkspaceEditTime();
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Knowledge Map 子项收起/展开
+    var kmToggle = document.getElementById('km-toggle');
+    var kmSection = document.getElementById('km-section');
+    if (kmToggle && kmSection) {
+        kmToggle.onclick = function(e) {
+            e.stopPropagation();
+            if (kmSection.style.display === 'none') {
+                kmSection.style.display = '';
+                kmToggle.textContent = '▼';
+            } else {
+                kmSection.style.display = 'none';
+                kmToggle.textContent = '▶';
+            }
+        };
+    }
+});
+</script>
+<script>
+// === Agent 操作流程卡片相关代码（仅保留一次，变量名加前缀防止冲突） ===
+(function() {
+  const AGENT_TOOL_STYLE = {
+    search_pdf:  { color: "bg-blue-100 border-blue-400", icon: "🔍" },
+    web_search:  { color: "bg-blue-100 border-blue-400", icon: "🌐" },
+    summarize:   { color: "bg-yellow-100 border-yellow-400", icon: "📝" },
+    ask_question:{ color: "bg-green-100 border-green-400", icon: "💬" },
+    add_note:    { color: "bg-purple-100 border-purple-400", icon: "🗒️" },
+    goto_upload_page: { color: "bg-pink-100 border-pink-400", icon: "⬆️" },
+    default:     { color: "bg-gray-100 border-gray-300", icon: "⚙️" }
+  };
+
+  const AGENT_STATUS_ICON = {
+    loading: '<svg class="animate-spin h-5 w-5 text-gray-400 inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>',
+    success: '<span class="inline-block w-3 h-3 rounded-full bg-green-500 align-middle"></span>',
+    fail:    '<svg class="h-5 w-5 text-red-500 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>'
+  };
+
+  let agentLastStep = 0;
+
+  function agentFormatTime(ts) {
+    const d = new Date(ts * 1000);
+    return d.toLocaleString();
+  }
+
+  function agentCreateCard(log) {
+    const { step, tool, input, output, timestamp } = log;
+    const style = AGENT_TOOL_STYLE[tool] || AGENT_TOOL_STYLE.default;
+    // 状态判断
+    let status = "success";
+    let outputContent = output;
+    if (typeof output === "string" && output === "正在处理...") status = "loading";
+    if (typeof output === "string" && output.startsWith("错误")) status = "fail";
+    // 折叠输入
+    const inputId = `agent-input-${step}-${Date.now()}`;
+    // 工具类型彩色圆点
+    let dotColor = 'bg-gray-400';
+    if (tool === 'search_pdf' || tool === 'web_search') dotColor = 'bg-blue-400';
+    else if (tool === 'summarize') dotColor = 'bg-yellow-400';
+    else if (tool === 'ask_question') dotColor = 'bg-green-400';
+    else if (tool === 'add_note') dotColor = 'bg-purple-400';
+    else if (tool === 'goto_upload_page') dotColor = 'bg-pink-400';
+    return `
+      <div class="border-l-4 p-4 shadow rounded transition-opacity duration-700 opacity-0 ${style.color}" style="animation: fadeIn 0.7s forwards;">
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-semibold">
+            Step ${step} · <span class="inline-block w-3 h-3 rounded-full align-middle mr-1 ${dotColor}"></span>
+            <span class="capitalize">${tool}</span>
+          </span>
+          <span class="text-xs text-gray-500">${agentFormatTime(timestamp)}</span>
+        </div>
+        <div class="mb-1">
+          <span class="font-medium text-gray-700">输入：</span>
+          <button onclick="document.getElementById('${inputId}').classList.toggle('hidden')" class="text-xs text-blue-500 underline ml-1">展开/收起</button>
+          <pre id="${inputId}" class="hidden text-sm text-gray-800 break-all bg-gray-50 rounded p-2 mt-1">${JSON.stringify(input, null, 2)}</pre>
+        </div>
+        <div>
+          <span class="font-medium text-gray-700">输出：</span>
+          <span>${status === "loading" ? AGENT_STATUS_ICON.loading : status === "fail" ? AGENT_STATUS_ICON.fail : AGENT_STATUS_ICON.success}</span>
+          <pre class="inline text-sm text-gray-800 break-all align-middle">${typeof outputContent === "string" ? outputContent : JSON.stringify(outputContent, null, 2)}</pre>
+        </div>
+      </div>
+    `;
+  }
+
+  // 动画淡入
+  const style = document.createElement('style');
+  style.innerHTML = `@keyframes fadeIn { to { opacity: 1; } }`;
+  document.head.appendChild(style);
+
+  function agentUpdateAgentFlow(logs) {
+    const flow = document.getElementById("agent-operation-flow");
+    if (!flow) return;
+    // 只渲染新日志
+    const newLogs = logs.filter(log => log.step > agentLastStep);
+    if (newLogs.length === 0) return;
+    agentLastStep = logs[logs.length - 1].step;
+    newLogs.forEach(log => {
+      const div = document.createElement("div");
+      div.innerHTML = agentCreateCard(log);
+      flow.appendChild(div.firstElementChild);
+    });
+  }
+
+  async function agentFetchAgentLogs() {
+    try {
+      const res = await fetch("/api/logs");
+      const logs = await res.json();
+      agentUpdateAgentFlow(logs);
+    } catch (e) {}
+  }
+
+  agentFetchAgentLogs();
+  setInterval(agentFetchAgentLogs, 2000);
+})();
+</script>
+</body>
+</html> 
