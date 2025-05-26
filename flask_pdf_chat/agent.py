@@ -12,7 +12,7 @@ import os
 # Perplexity API 封装
 PPLX_API_KEY = os.environ.get("PPLX_API_KEY")
 if not PPLX_API_KEY:
-    raise ValueError("请设置环境变量 PPLX_API_KEY")
+    raise ValueError("Please set the environment variable PPLX_API_KEY")
 def call_perplexity(messages, model="sonar", temperature=0.7, max_tokens=500):
     url = "https://api.perplexity.ai/chat/completions"
     headers = {
@@ -47,7 +47,7 @@ class Agent:
         }
         
     def search_pdf(self, query: str) -> List[Dict]:
-        """在 PDF 中搜索相关内容"""
+        """Search for related content in PDF"""
         if 'pdf_content' not in session:
             return []
         
@@ -62,95 +62,95 @@ class Agent:
         return results
     
     def summarize(self, text: str) -> str:
-        """生成文本摘要"""
+        """Generate text summary"""
         try:
             messages = [
-                {"role": "system", "content": "你是一个专业的文本摘要助手。"},
-                {"role": "user", "content": f"请为以下文本生成一个简洁的摘要：\n\n{text}"}
+                {"role": "system", "content": "You are a professional text summarization assistant."},
+                {"role": "user", "content": f"Please generate a concise summary for the following text:\n\n{text}"}
             ]
             return call_perplexity(messages)
         except Exception as e:
-            return f"生成摘要时出错：{str(e)}"
+            return f"Error occurred while generating summary: {str(e)}"
     
     def ask_question(self, question: str, context: str = "") -> str:
-        """基于上下文回答问题"""
+        """Answer question based on context"""
         try:
             messages = [
-                {"role": "system", "content": "你是一个专业的问答助手。"}
+                {"role": "system", "content": "You are a professional question-answering assistant."}
             ]
             if context:
                 messages.append({
                     "role": "system",
-                    "content": f"参考以下上下文：\n{context}"
+                    "content": f"Reference the following context:\n{context}"
                 })
             messages.append({"role": "user", "content": question})
             return call_perplexity(messages)
         except Exception as e:
-            return f"回答问题时出错：{str(e)}"
+            return f"Error occurred while answering question: {str(e)}"
     
     def add_note(self, content: str) -> str:
-        """添加笔记"""
+        """Add note"""
         if 'notes' not in session:
             session['notes'] = []
         
         session['notes'].append(content)
-        return "笔记已添加"
+        return "Note added"
     
     def parse_intent(self, user_input: str) -> Tuple[str, str, List[Any]]:
-        """解析用户意图，决定调用哪个工具"""
+        """Parse user intent to determine which tool to call"""
         try:
             messages = [
                 {"role": "system", "content": (
-                    "你是一个意图解析助手。请分析用户输入，决定是否需要调用工具，以及调用哪个工具。"
-                    "如果用户的问题涉及最新信息、互联网、新闻、查找、实时数据等，优先调用 web_search 工具。"
-                    "如果用户表达了'上传文件''导入文档''添加资料'等意图，优先调用 goto_upload_page 工具。"
-                    "可用工具：search_pdf, summarize, ask_question, add_note, web_search, goto_upload_page。"
-                    "示例：\n"
-                    "用户输入：我要上传一个新的PDF\n"
-                    "返回：{\"intent\": \"上传文件\", \"tool\": \"goto_upload_page\", \"args\": []}\n"
-                    "请以JSON格式返回：{\"intent\": \"意图描述\", \"tool\": \"工具名\", \"args\": [参数列表]}"
+                    "You are an intent parsing assistant. Please analyze user input to determine whether to call a tool and which tool to call."
+                    "If the user's question involves latest information, internet, news, search, real-time data, etc., prioritize calling the web_search tool."
+                    "If the user expresses intentions like 'upload file', 'import document', 'add material', etc., prioritize calling the goto_upload_page tool."
+                    "Available tools: search_pdf, summarize, ask_question, add_note, web_search, goto_upload_page."
+                    "Example:\n"
+                    "User input: I want to upload a new PDF\n"
+                    "Return: {\"intent\": \"upload file\", \"tool\": \"goto_upload_page\", \"args\": []}\n"
+                    "Please return in JSON format: {\"intent\": \"intent description\", \"tool\": \"tool name\", \"args\": [parameter list]}"
                 )},
-                {"role": "user", "content": f"用户输入：{user_input}\n\n可用工具：{list(self.tools.keys())}\n\n请以JSON格式返回：{{\"intent\": \"意图描述\", \"tool\": \"工具名\", \"args\": [参数列表]}}"}
+                {"role": "user", "content": f"User input: {user_input}\n\nAvailable tools: {list(self.tools.keys())}\n\nPlease return in JSON format: {{\"intent\": \"intent description\", \"tool\": \"tool name\", \"args\": [parameter list]}}"}
             ]
             plan = call_perplexity(messages)
             result = json.loads(plan)
             return result["intent"], result["tool"], result["args"]
         except Exception as e:
-            return "无法理解意图", "", []
+            return "Cannot understand intent", "", []
     
     def generate_guide_question(self, intent: str) -> str:
-        """生成引导性问题"""
+        """Generate guiding question"""
         try:
             messages = [
-                {"role": "system", "content": "你是一个学习引导助手。请根据用户的学习意图，生成一个有助于深入学习的引导性问题。"},
-                {"role": "user", "content": f"用户意图：{intent}"}
+                {"role": "system", "content": "You are a learning guidance assistant. Please generate a guiding question that helps deepen learning based on the user's learning intent."},
+                {"role": "user", "content": f"User intent: {intent}"}
             ]
             return call_perplexity(messages)
         except Exception as e:
             return ""
     
     def respond(self, user_input: str) -> Dict:
-        """处理用户输入并生成回复"""
-        # 解析意图
+        """Process user input and generate response"""
+        # Parse intent
         intent, tool_name, tool_args = self.parse_intent(user_input)
         
-        # 如果需要调用工具
+        # If a tool needs to be called
         if tool_name in self.tools:
             tool_func = self.tools[tool_name]
             tool_result = tool_func(*tool_args)
-            # 记录日志（调用工具的那一刻）
+            # Log (at the moment of calling the tool)
             AgentOperationLogger.log(tool_name, tool_args, tool_result)
-            response = f"我为你找到了：{tool_result}"
+            response = f"I found for you: {tool_result}"
         else:
-            # 直接对话
+            # Direct conversation
             response = self.ask_question(user_input)
-            # 兜底：如大模型回复中出现无法联网/知识截止等字样，则自动调用web_search
-            if any(x in response for x in ["无法实时访问互联网", "无法联网", "知识截止", "无法获取最新", "请查询", "无法检索", "无法访问互联网"]):
+            # Fallback: If the large model's reply contains words like "cannot access the internet" or "knowledge cutoff", it will automatically call web_search
+            if any(x in response for x in ["cannot access the internet", "cannot connect to the internet", "knowledge cutoff", "cannot get the latest", "please query", "cannot search", "cannot access the internet"]):
                 web_result = self.web_search(user_input)
-                response += f"\n【实时搜索结果】\n{web_result}"
-            # 记录日志（直接对话）
+                response += f"\n【Real-time search results】\n{web_result}"
+            # Log (direct conversation)
             AgentOperationLogger.log('ask_question', [user_input], response)
-        # 生成引导性问题
+        # Generate guiding question
         guide_question = self.generate_guide_question(intent)
         
         return {
@@ -161,30 +161,30 @@ class Agent:
 
     def fetch_and_summarize(self, urls: list, query: str) -> str:
         texts = []
-        for url in urls[:2]:  # 只抓前2个
+        for url in urls[:2]:  # Only grab the first 2
             try:
                 resp = requests.get(url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
                 soup = BeautifulSoup(resp.text, "html.parser")
                 ps = soup.find_all(['p'])
                 content = "\n".join([p.get_text() for p in ps if len(p.get_text()) > 30])
                 if content:
-                    texts.append(content[:2000])  # 每篇最多2000字
+                    texts.append(content[:2000])  # Each article at most 2000 characters
             except Exception as e:
                 continue
         if not texts:
-            return "未能抓取到有效网页内容。"
-        # 用大模型总结
+            return "Could not retrieve valid web page content."
+        # Use large model to summarize
         client = openai.OpenAI()
         prompt = (
-            f"请只根据下方网页内容，直接回答用户问题：{query}\n"
-            "不要说'未提及'、'无法判断'、'请自行查阅'等。如果网页内容中有答案，请直接提取并简明表述。\n\n"
-            "【网页内容】\n"
+            f"Please answer the user's question directly based on the following web page content:\n"
+            "Do not say 'not mentioned', 'cannot determine', 'please check yourself' etc. If there is an answer in the web page content, please directly extract and briefly express it.\n\n"
+            "【Web page content】\n"
             + "\n\n".join(texts)
         )
         response = client.chat.completions.create(
             model="openai.gpt-4o",
             messages=[
-                {"role": "system", "content": "你是一个专业的信息检索与总结助手，只能根据网页内容作答。"},
+                {"role": "system", "content": "You are a professional information retrieval and summary assistant, and can only answer based on web page content."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
@@ -202,39 +202,39 @@ class Agent:
                     output.append(f"{r['title']}: {r['href']}")
                     urls.append(r['href'])
                 summary = self.fetch_and_summarize(urls, query)
-                return f"{summary}\n\n【原始搜索结果】\n" + ("\n".join(output) if output else "未找到相关结果")
+                return f"{summary}\n\n【Original search results】\n" + ("\n".join(output) if output else "No related results found")
         except Exception as e:
-            return f"搜索时出错：{str(e)}"
+            return f"Error occurred while searching: {str(e)}"
 
     def goto_upload_page(self) -> str:
-        return "请跳转到文件上传页面。"
+        return "Please jump to the file upload page."
 
     def autonomous_run(self, user_goal: str, max_steps=5):
         """
-        根据用户目标，自动多步调用工具链，直到任务完成或达到最大步数。
-        每一步都记录日志，最终返回所有步骤轨迹。
+        Automatically call tool chain multiple times based on user goal until task completion or maximum steps reached.
+        Each step is logged, and the final return is all step trajectories.
         """
         observation = ""
         steps = []
         for step in range(1, max_steps + 1):
-            # 1. 让大模型规划下一步
+            # 1. Let large model plan next step
             plan_prompt = (
-                f"你的目标：{user_goal}\n"
-                f"当前观察/结果：{observation}\n"
-                f"你可以使用的工具：{list(self.tools.keys())}\n"
-                "你可以多步调用工具，每一步都可以用上一步的结果作为输入，直到目标被完整达成。\n"
-                "如果仅用 web_search 得到的是原始网页内容或摘要，请继续用 summarize、add_note 等工具，直到目标被完整实现。\n"
-                "只有当你认为目标已经完全实现时，才 stop。否则请继续下一步。\n"
-                "特别注意：如果用户目标涉及'最新''2025''未来''当前'等信息，或你不确定答案，必须先用 web_search 工具获取最新资料，再进行后续总结或笔记。\n"
-                "如果你发现自己知识截止或不确定，也必须先 web_search。\n"
-                "返回格式：{\"tool\": \"工具名\", \"args\": [参数], \"stop\": true/false, \"thought\": \"你的思考过程\"}\n"
-                "示例：\n"
-                "Step 1: {\"tool\": \"web_search\", \"args\": [\"AI 2025 news\"], \"stop\": false, \"thought\": \"先查找最新AI新闻\"}\n"
-                "Step 2: {\"tool\": \"summarize\", \"args\": [上一步结果], \"stop\": false, \"thought\": \"对新闻内容进行总结\"}\n"
-                "Step 3: {\"tool\": \"add_note\", \"args\": [上一步结果], \"stop\": true, \"thought\": \"将总结内容保存为笔记，任务完成\"}\n"
+                f"Your goal: {user_goal}\n"
+                f"Current observation/result: {observation}\n"
+                f"You can use the following tools: {list(self.tools.keys())}\n"
+                "You can use multiple tools, each time using the result of the previous step as input, until the goal is fully achieved.\n"
+                "If only web_search gets original web page content or summary, please continue using summarize, add_note, etc. tools until the goal is fully achieved.\n"
+                "Only stop when you think the goal is fully achieved. Otherwise, please continue to the next step.\n"
+                "Special note: If the user goal involves 'latest', '2025', 'future', 'current', etc., or you are unsure about the answer, you must first use the web_search tool to get the latest information, then proceed with subsequent summary or note.\n"
+                "If you find yourself knowledge cutoff or unsure, you must first use web_search.\n"
+                "Return format: {\"tool\": \"tool name\", \"args\": [parameters], \"stop\": true/false, \"thought\": \"your thinking process\"}\n"
+                "Example:\n"
+                "Step 1: {\"tool\": \"web_search\", \"args\": [\"AI 2025 news\"], \"stop\": false, \"thought\": \"First find the latest AI news\"}\n"
+                "Step 2: {\"tool\": \"summarize\", \"args\": [previous step result], \"stop\": false, \"thought\": \"Summarize news content\"}\n"
+                "Step 3: {\"tool\": \"add_note\", \"args\": [previous step result], \"stop\": true, \"thought\": \"Save summary content as note, task completed\"}\n"
             )
             messages = [
-                {"role": "system", "content": "你是一个可以自主多步调用工具的智能体，每一步都要根据目标和上一步结果决定下一步。"},
+                {"role": "system", "content": "You are a smart body that can call multiple tools autonomously. Each time you need to decide the next step based on the goal and the result of the previous step."},
                 {"role": "user", "content": plan_prompt}
             ]
             plan = call_perplexity(messages, max_tokens=400)
@@ -245,10 +245,10 @@ class Agent:
                 should_stop = plan_json.get("stop", False)
                 thought = plan_json.get("thought", "")
             except Exception:
-                # 解析失败，终止
+                # Parse failed, terminate
                 break
 
-            # 2. 调用工具
+            # 2. Call tool
             if tool_name not in self.tools:
                 break
             result = self.tools[tool_name](*tool_args)
@@ -261,7 +261,7 @@ class Agent:
                 "thought": thought
             })
             observation = str(result)
-            # summarize 兜底：如果第一步是 web_search 且 stop==True，则自动 summarize
+            # summarize fallback: If the first step is web_search and stop==True, summarize automatically
             if step == 1 and tool_name == "web_search" and str(should_stop).lower() == "true":
                 sum_result = self.tools["summarize"](observation)
                 AgentOperationLogger.log("summarize", [observation], sum_result)
@@ -270,12 +270,12 @@ class Agent:
                     "tool": "summarize",
                     "input": [observation],
                     "output": sum_result,
-                    "thought": "web_search 后自动总结兜底"
+                    "thought": "Summarize fallback automatically after web_search"
                 })
                 break
             if str(should_stop).lower() == "true":
                 break
         return steps
 
-# 创建全局 agent 实例
+# Create global agent instance
 agent = Agent() 
