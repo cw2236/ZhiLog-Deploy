@@ -12,4 +12,5 @@ Pillow==10.2.0
 beautifulsoup4==4.12.3
 streamlit-javascript
 streamlit-pdf-viewer==0.0.4
-streamlit-js-eval==0.1.5 
+streamlit-js-eval==0.1.5
+duckduckgo-search 
