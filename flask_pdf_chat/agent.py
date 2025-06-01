@@ -5,7 +5,7 @@ import json
 from duckduckgo_search import DDGS
 import requests
 from bs4 import BeautifulSoup
-from agent_logger import AgentOperationLogger
+from flask_pdf_chat.agent_logger import AgentOperationLogger
 import time
 
 class Agent:
