@@ -115,9 +115,13 @@ def index():
             file = request.files['pdf_file']
             if file.filename.endswith('.pdf'):
                 filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                # 保存到 static/uploads
+                static_upload_dir = os.path.join(app.root_path, 'static', 'uploads')
+                if not os.path.exists(static_upload_dir):
+                    os.makedirs(static_upload_dir)
+                filepath = os.path.join(static_upload_dir, filename)
                 file.save(filepath)
-                pdf_url = url_for('uploaded_file', filename=filename)
+                pdf_url = url_for('static', filename='uploads/' + filename)
                 session['pdf_url'] = pdf_url
                 session['pdf_filename'] = filename
                 # 自动reset
@@ -130,7 +134,6 @@ def index():
                 # 提取PDF文本
                 pdf_text = extract_pdf_text(filepath)
                 session['pdf_text'] = pdf_text
-
                 # 生成分块，健壮处理
                 def chunk_text(text, chunk_size=1000, overlap=200):
                     if not text:
