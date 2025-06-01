@@ -24,7 +24,7 @@ app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB
 
 # 设置OpenAI API密钥
 openai.api_key = os.environ.get("OPENAI_API_KEY")
-openai.base_url = "https://api.ai.it.cornell.edu"
+openai.base_url = os.environ.get("OPENAI_BASE_URL", "https://api.ai.it.cornell.edu")
 
 # 清空 session 文件夹
 session_dir = os.path.join(os.path.dirname(__file__), 'flask_session_data')
