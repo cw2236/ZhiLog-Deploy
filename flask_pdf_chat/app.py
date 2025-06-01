@@ -1,16 +1,15 @@
-from dotenv import load_dotenv
-load_dotenv()
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify, session
 from flask_session import Session
 import os
 from werkzeug.utils import secure_filename
+import openai
 import PyPDF2
 import hashlib
 from datetime import datetime
 import json
 import shutil
 import re
-from agent import agent, call_perplexity
+from agent import agent
 from agent_logger import AgentOperationLogger
 
 app = Flask(__name__)
@@ -22,6 +21,10 @@ app.config['SESSION_USE_SIGNER'] = True
 Session(app)
 app.config['UPLOAD_FOLDER'] = 'flask_pdf_chat/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB
+
+# 设置OpenAI API密钥
+openai.api_key = "sk-lxUWT88Z2f--5a-7CKZjxQ"
+openai.base_url = "https://api.ai.it.cornell.edu"
 
 # 清空 session 文件夹
 session_dir = os.path.join(os.path.dirname(__file__), 'flask_session_data')
@@ -51,12 +54,27 @@ def extract_pdf_text(filepath):
 def get_pdf_summary(pdf_text):
     """Get PDF summary"""
     try:
-        prompt = f"Please briefly summarize the following document content, including:\n1. Main topic of the document\n2. Key points\n3. Important conclusions\n\nDocument content:\n{pdf_text[:3000]}"
-        messages = [
-            {"role": "system", "content": "You are a professional document analysis assistant, please summarize the document content in concise and clear language."},
-            {"role": "user", "content": prompt}
-        ]
-        return call_perplexity(messages, max_tokens=500)
+        client = openai.OpenAI()
+        
+        prompt = f"""Please briefly summarize the following document content, including:
+1. Main topic of the document
+2. Key points
+3. Important conclusions
+
+Document content:
+{pdf_text[:3000]}  # Limit text length to avoid token overflow
+"""
+        
+        response = client.chat.completions.create(
+            model="openai.gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a professional document analysis assistant, please summarize the document content in concise and clear language."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        return response.choices[0].message.content
     except Exception as e:
         print(f"Error generating summary: {str(e)}")
         return None
@@ -111,6 +129,35 @@ def index():
                 # 提取PDF文本
                 pdf_text = extract_pdf_text(filepath)
                 session['pdf_text'] = pdf_text
+
+                # 生成分块，健壮处理
+                def chunk_text(text, chunk_size=1000, overlap=200):
+                    if not text:
+                        return []
+                    chunks = []
+                    start = 0
+                    text_length = len(text)
+                    while start < text_length:
+                        end = min(start + chunk_size, text_length)
+                        chunk = text[start:end]
+                        chunks.append({
+                            "content": chunk,
+                            "start": start,
+                            "end": end
+                        })
+                        # 防止死循环
+                        if end == text_length:
+                            break
+                        start = end - overlap
+                        if start < 0 or start >= text_length:
+                            break
+                    return chunks
+                try:
+                    chunks = chunk_text(pdf_text)
+                    session['pdf_chunks'] = chunks
+                except Exception as e:
+                    print("chunk_text error:", e)
+                    session['pdf_chunks'] = []
                 # 生成PDF摘要
                 summary = get_pdf_summary(pdf_text)
                 if summary:
@@ -180,15 +227,77 @@ def chat():
         return jsonify({'status': 'error', 'msg': 'Session not found'})
     chat_history = chat_sessions[session_id]['chat_history']
     reference_text = reference or chat_sessions[session_id].get('reference', '')
-    page = chat_sessions[session_id]['page']
-    # Build message history
-    system_prompt = f"You are a professional document analysis assistant. Please prioritize answering the user's question based on the following PDF excerpt (page {page}):\n{reference_text}"
-    messages = [{"role": "system", "content": system_prompt}]
-    for msg in chat_history:
-        messages.append({"role": msg['role'], "content": msg['content']})
-    messages.append({"role": "user", "content": user_input})
-    # 调用 Perplexity
-    reply = call_perplexity(messages, max_tokens=500)
+
+    # === 新增：用 reference_text 检索 chunk，拼接上下文 ===
+    chunks = session.get('pdf_chunks', [])
+    pdf_text = session.get('pdf_text', '')
+    print("reference_text:", reference_text)
+    print("pdf_text length:", len(pdf_text))
+    print("chunks:", len(chunks))
+
+    context = ""
+    window_size = 1
+
+    if reference_text and chunks:
+        # 先用 in 查找所有包含 reference_text 的 chunk
+        found = False
+        for i, chunk in enumerate(chunks):
+            if reference_text.strip() in chunk['content']:
+                start = max(0, i - window_size)
+                end = min(len(chunks), i + window_size + 1)
+                context = ''.join([c['content'] for c in chunks[start:end]])
+                found = True
+                print(f"Found in chunk {i}, context length: {len(context)}")
+                break
+        # fallback: 用 find 定位 offset
+        if not found and pdf_text:
+            offset = pdf_text.find(reference_text.strip())
+            print("offset:", offset)
+            if offset >= 0:
+                chunk_idx = -1
+                for i, chunk in enumerate(chunks):
+                    if chunk['start'] <= offset < chunk['end']:
+                        chunk_idx = i
+                        break
+                if chunk_idx != -1:
+                    start = max(0, chunk_idx - window_size)
+                    end = min(len(chunks), chunk_idx + window_size + 1)
+                    context = ''.join([c['content'] for c in chunks[start:end]])
+                    print(f"Found by offset in chunk {chunk_idx}, context length: {len(context)}")
+    if not context:
+        print("Fallback to reference_text as context")
+        context = reference_text
+
+    print("Final context:", context[:300])  # 只打印前300字
+
+    # === 构建 prompt ===
+    print("context:", context)  # 调试用
+    if not context:
+        context = reference_text
+    prompt = f"""你是一个专业的PDF文档助手。请只针对用户选中的内容进行回答，必要时可参考上下文信息，但不要泛泛总结上下文。
+
+【选中内容】
+{reference_text}
+
+【上下文】
+{context}
+
+【用户问题】
+{user_input}
+"""
+
+    # 调用OpenAI
+    client = openai.OpenAI()
+    response = client.chat.completions.create(
+        model="openai.gpt-4o",
+        messages=[
+            {"role": "system", "content": "你是一个专业的PDF文档助手。"},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7,
+        max_tokens=500
+    )
+    reply = response.choices[0].message.content
     now = datetime.now().strftime('%H:%M')
     chat_history.append({"role": "user", "content": user_input, "time": now, "reference": reference})
     chat_history.append({"role": "assistant", "content": reply, "time": now})
@@ -240,11 +349,17 @@ def export_notes():
         notes += "----\n"
     # Let AI further summarize
     try:
-        messages = [
-            {"role": "system", "content": "You are a professional document note organizing assistant. Please organize the user's multi-turn Q&A history (with reference) into structured and clear notes."},
-            {"role": "user", "content": notes}
-        ]
-        ai_notes = call_perplexity(messages, max_tokens=1200)
+        client = openai.OpenAI()
+        response = client.chat.completions.create(
+            model="openai.gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a professional document note organizing assistant. Please organize the user's multi-turn Q&A history (with reference) into structured and clear notes."},
+                {"role": "user", "content": notes}
+            ],
+            temperature=0.7,
+            max_tokens=1200
+        )
+        ai_notes = response.choices[0].message.content
         session['last_note'] = ai_notes
         session.modified = True
         return jsonify({"notes": ai_notes})
@@ -299,11 +414,17 @@ def note_chat_ask():
     if reference:
         system_prompt += f"\n\nPlease prioritize answering with the following reference:\n{reference}"
     system_prompt += "\n\nIf needed, you can also refer to the notes:\n" + note
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": question}
-    ]
-    answer = call_perplexity(messages, max_tokens=600)
+    client = openai.OpenAI()
+    response = client.chat.completions.create(
+        model="openai.gpt-4o",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": question}
+        ],
+        temperature=0.7,
+        max_tokens=600
+    )
+    answer = response.choices[0].message.content
     # Key: always create a new list to avoid session tracking issues
     history = list(session.get('note_chatbot_history', []))
     history = history + [
@@ -403,9 +524,6 @@ except Exception:
     pass
 
 if __name__ == '__main__':
-    import sys
-    port = 5003
-    for arg in sys.argv[1:]:
-        if arg.startswith('--port='):
-            port = int(arg.split('=')[1])
-    app.run(debug=True, port=port) 
+    import os
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port) 

@@ -216,6 +216,12 @@
     .chat-input button:hover {
         background: #1557b0;
     }
+    .pdf-highlight {
+        background: #ffe066;
+        border-radius: 3px;
+        padding: 0 2px;
+        box-shadow: 0 1px 4px #ffe06680;
+    }
     </style>
     <script>
     async function sendMessage() {
@@ -387,7 +393,72 @@
         }, 200);
     }
 
-    // 修改 PDF viewer 的文本选择处理
+    // ========== 高亮相关 ========== //
+    // 存储高亮信息：[{page: 1, text: 'xxx', id: 'uuid'}]
+    function getHighlights() {
+        return JSON.parse(localStorage.getItem('pdf_highlights') || '[]');
+    }
+    function saveHighlights(highlights) {
+        localStorage.setItem('pdf_highlights', JSON.stringify(highlights));
+    }
+    function addHighlight(page, text) {
+        if (!text) return;
+        const id = 'hl_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+        let highlights = getHighlights();
+        highlights.push({page, text, id});
+        saveHighlights(highlights);
+    }
+    function clearHighlights() {
+        localStorage.removeItem('pdf_highlights');
+    }
+    // 渲染高亮
+    function highlightTextOnPage(pageNum) {
+        const highlights = getHighlights().filter(h => h.page === pageNum);
+        if (!highlights.length) return;
+        const textLayer = document.getElementById('pdf-text-layer');
+        if (!textLayer) return;
+        const textDivs = Array.from(textLayer.querySelectorAll('div'));
+        const fullText = textDivs.map(div => div.textContent).join('');
+        highlights.forEach(h => {
+            const idx = fullText.indexOf(h.text);
+            if (idx === -1) return;
+            // 计算高亮文本跨越哪些div
+            let count = 0, startDiv = -1, endDiv = -1, startOffset = 0, endOffset = 0;
+            for (let i = 0; i < textDivs.length; i++) {
+                const len = textDivs[i].textContent.length;
+                if (startDiv === -1 && count + len > idx) {
+                    startDiv = i;
+                    startOffset = idx - count;
+                }
+                if (startDiv !== -1 && count + len >= idx + h.text.length) {
+                    endDiv = i;
+                    endOffset = idx + h.text.length - count;
+                    break;
+                }
+                count += len;
+            }
+            if (startDiv !== -1 && endDiv !== -1) {
+                // 构造 Range
+                const range = document.createRange();
+                range.setStart(textDivs[startDiv].firstChild, startOffset);
+                range.setEnd(textDivs[endDiv].firstChild, endOffset);
+                // 创建高亮span
+                const span = document.createElement('span');
+                span.className = 'pdf-highlight';
+                span.setAttribute('data-hlid', h.id);
+                try {
+                    range.surroundContents(span);
+                } catch (e) {
+                    // 防止重复高亮报错
+                }
+            }
+        });
+    }
+    // ========== 修改PDF渲染流程 ========== //
+    function afterPDFRendered() {
+        highlightTextOnPage(currentPage);
+    }
+    // ========== 选择文本后自动高亮 ========== //
     textLayerDiv.addEventListener('mouseup', function(e) {
         const selection = window.getSelection();
         selectedText = selection.toString().trim();
@@ -408,6 +479,9 @@
                     renderReferenceCard(selectedText);
                     hideReferenceButton(btn);
                     window.getSelection().removeAllRanges();
+                    // === 只在这里添加高亮 ===
+                    addHighlight(currentPage, selectedText);
+                    highlightTextOnPage(currentPage);
                     selectedText = '';
                 }
             };
@@ -418,36 +492,45 @@
             hideReferenceButton(btn);
         }
     });
-
-    // 修改 Note chat 的文本选择处理
-    if (window.location.pathname.includes('note_chat')) {
-        // ... existing Quill initialization code ...
-        quill.on('selection-change', function(range) {
-            if (range && range.length > 0) {
-                const text = quill.getText(range.index, range.length).trim();
-                noteReference = text; // 实时更新
-                let btn = document.getElementById('note-ref-btn');
-                if (!btn) {
-                    btn = createReferenceButton();
-                    btn.id = 'note-ref-btn';
-                    btn.onclick = function() {
-                        renderNoteReferenceCard(noteReference);
-                        hideReferenceButton(btn);
-                        quill.setSelection(null);
-                    };
-                }
-                if (text) {
-                    const bounds = quill.getBounds(range.index, range.length);
-                    const editorBounds = quill.container.getBoundingClientRect();
-                    showReferenceButton(btn, editorBounds.left + bounds.left + bounds.width, editorBounds.top + bounds.top);
-                } else {
-                    hideReferenceButton(btn);
-                }
-            } else {
-                const btn = document.getElementById('note-ref-btn');
-                if (btn) hideReferenceButton(btn);
-            }
+    // 翻页时自动高亮
+    function renderPage(pageNum) {
+        pdfDoc.getPage(pageNum).then(function(page) {
+            var scale = 1.5;
+            var viewport = page.getViewport({scale: scale});
+            var canvas = document.getElementById('pdf-canvas');
+            var context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            canvas.style.width = viewport.width + 'px';
+            canvas.style.height = viewport.height + 'px';
+            // 设置wrapper宽高
+            var wrapper = document.getElementById('pdf-viewer-wrapper');
+            wrapper.style.width = viewport.width + 'px';
+            wrapper.style.height = viewport.height + 'px';
+            textLayerDiv.style.width = viewport.width + 'px';
+            textLayerDiv.style.height = viewport.height + 'px';
+            textLayerDiv.style.transform = canvas.style.transform;
+            // 修复z-index和pointer-events
+            textLayerDiv.style.zIndex = 20;
+            textLayerDiv.style.pointerEvents = 'auto';
+            var renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            page.render(renderContext);
+            // 渲染textLayer
+            page.getTextContent().then(function(textContent) {
+                textLayerDiv.innerHTML = '';
+                pdfjsLib.renderTextLayer({
+                    textContent: textContent,
+                    container: textLayerDiv,
+                    viewport: viewport,
+                    textDivs: []
+                });
+            });
+            setTimeout(afterPDFRendered, 300);
         });
+        document.getElementById('pdf-page-info').textContent = `Page ${pageNum} of ${totalPages}`;
     }
     // ========== Session堆叠区动态渲染与交互 ==========
     async function fetchSessions(filterPage=null) {
@@ -578,17 +661,6 @@
     }
 
     function setActiveSession(sessionId) {
-    }
-
-    // PDF渲染后调用高亮和连线
-    function afterPDFRendered() {
-        highlightReferencesOnPDF();
-        drawReferenceSessionLines();
-    }
-    // session堆叠区渲染后也调用
-    function afterSessionRendered() {
-        highlightReferencesOnPDF();
-        drawReferenceSessionLines();
     }
 
     window.addEventListener('DOMContentLoaded', function() {
@@ -1042,6 +1114,9 @@
                                     renderReferenceCard(selectedText);
                                     hideReferenceButton(btn);
                                     window.getSelection().removeAllRanges();
+                                    // === 只在这里添加高亮 ===
+                                    addHighlight(currentPage, selectedText);
+                                    highlightTextOnPage(currentPage);
                                     selectedText = '';
                                 }
                             };

@@ -1,130 +1,168 @@
-# 📄 Flask PDF Chat & Agent Application
+# 📌 INFO-5940
 
-This project is a modern PDF chat/note/agent application. It supports PDF Q&A, note editing, citation, multi-step reasoning, agent operation flow visualization, and more. The backend is based on Flask, the frontend UI is highly similar to ChatGPT, and it supports Perplexity API for agent capabilities.
+## RAG Chatbot
+
+Welcome to the INFO-5940 RAG Chatbot repository! This chatbot is a Retrieval-Augmented Generation (RAG) system powered by OpenAI models and LangChain. It enables users to upload documents (PDF and TXT) and retrieve relevant information from them using semantic search and conversational AI. The chatbot is implemented using Streamlit for the user interface and ChromaDB for vector storage.
 
 ---
 
-## 🚀 Quick Start
+## 🛠️ Prerequisites
+
+Before starting, ensure you have the following installed on your system:
+
+- Docker (Ensure Docker Desktop is running)
+- VS Code
+- VS Code Remote - Containers Extension
+- Git
+- OpenAI API Key
+
+---
+
+## 🚀 Setup Guide
 
 ### 1️⃣ Clone the Repository
 
-```bash
-git clone https://github.com/your-username/your-repo-name.git
-cd your-repo-name
+Open a terminal and run:
+
+```sh
+git clone https://github.com/cw2236/5940.git
+cd 5940
 ```
 
-### 2️⃣ Install Dependencies
+### 2️⃣ Configure OpenAI API Key
 
-Python 3.9+ is recommended. It is best to use a virtual environment:
+Since `docker-compose.yml` expects environment variables, follow these steps:
 
-```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+#### ➤ Option 1: Set the API Key in `.env` (Recommended)
+
+Inside the project folder, create a `.env` file:
+
+```sh
+touch .env
 ```
 
-#### 📦 Dependency Details
+Add your API key and base URL:
 
-All dependencies are listed in `requirements.txt`. **It is highly recommended to install them all at once:**
-
-| Package             | Purpose/Description                | Install Command                      |
-|---------------------|------------------------------------|--------------------------------------|
-| Flask               | Web framework                      | `pip install Flask`                  |
-| FlaREMOVED_KEYSession       | Session persistence                | `pip install FlaREMOVED_KEYSession`          |
-| PyPDF2              | PDF text extraction                | `pip install PyPDF2`                 |
-| python-dotenv       | Load .env environment variables    | `pip install python-dotenv`          |
-| requests            | HTTP requests                      | `pip install requests`               |
-| beautifulsoup4      | HTML parsing                       | `pip install beautifulsoup4`         |
-| duckduckgo-search   | DuckDuckGo search API              | `pip install duckduckgo-search`      |
-| werkzeug            | Flask dependency, file upload      | `pip install werkzeug`               |
-| Pillow              | Image processing (if used)         | `pip install Pillow`                 |
-| streamlit*          | (Optional, for some features)      | `pip install streamlit`              |
-
-> You can add or remove packages according to your actual `requirements.txt`.
-
-To install all dependencies at once:
-
-```bash
-pip install -r requirements.txt
+```plaintext
+OPENAI_API_KEY=your-api-key-here
+OPENAI_BASE_URL=https://api.ai.it.cornell.edu/
+TZ=America/New_York
 ```
 
-Or, to install individually:
+Make sure the `docker-compose.yml` include this `.env` file:
 
-```bash
-pip install Flask FlaREMOVED_KEYSession PyPDF2 python-dotenv requests beautifulsoup4 duckduckgo-search werkzeug Pillow
+```yaml
+version: '3.8'
+services:
+  devcontainer:
+    container_name: info-5940-devcontainer
+    build:
+      dockerfile: Dockerfile
+      target: devcontainer
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - TZ=${TZ}
+    volumes:
+      - '$HOME/.aws:/root/.aws'
+      - '.:/workspace'
+    env_file:
+      - .env
 ```
+
+Compose the container:
+
+```sh
+docker-compose up --build
+```
+
+Now, your API key will be automatically loaded inside the container.
+
+---
+### 3️⃣ Open in VS Code with Docker
+1. Open Docker dashboard and run the imange you just created(It should be called 5940)
+
+2. Open VS Code and navigate to the project folder.
+
+3. Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac) and search for:
+   ```
+   Remote-Containers: Rebuild and Reopen in Container"
+   ```
+4. Select From 'docker-compose.yml', then don't select any choice and click OK directly
+
+4. Select this option. VS Code will build and open the project inside the container.
+
+📌 **Note:** If you don’t see this option, ensure that the Remote - Containers extension is installed.
 
 ---
 
-### 3️⃣ Configure API Key
 
-This project requires a Perplexity API Key ([Get one here](https://www.perplexity.ai/)).
 
-1. Create a `.env` file in the project root directory with the following content:
+### 4️⃣ Install Additional Libraries
 
-    ```
-    PPLX_API_KEY=your_perplexity_api_key
-    ```
+```sh
+pip install -U langchain-chroma
+pip install pdfminer.six
 
-2. The `.env` file is already in `.gitignore` and will not be uploaded.
-
----
-
-### 4️⃣ Start the Service
-
-```bash
-cd flask_pdf_chat
-python app.py --port=5004
-```
-
-- Default port is 5003. You can specify another port with `--port=xxxx`.
-
----
-
-### 5️⃣ Access the App
-
-Open your browser and visit [http://localhost:5004](http://localhost:5004)  
-You can now enjoy PDF chat, note-taking, multi-step agent reasoning, and more.
-
----
-
-## ✨ Main Features
-
-- **PDF Q&A**: Upload PDFs, select text, and get precise answers based on the cited content.
-- **Note Editing & Q&A**: Rich text note editing and Q&A based on your notes.
-- **Multi-step Agent Reasoning**: Automatically chain tools like web_search, summarize, add_note to accomplish complex goals.
-- **Agent Operation Flow Visualization**: Visualize all agent tool calls, with refresh, scroll, and color highlights.
-- **ChatGPT-like UI**: Sidebar, PDF viewer, chatbot, note area, and more for a smooth experience.
-- **API Key Security**: All sensitive info is managed via `.env` for security and compliance.
-
----
-
-## 🛠️ Project Structure
-
-```
-flask_pdf_chat/
-    app.py                # Flask main app
-    agent.py              # Agent and toolchain logic
-    agent_logger.py       # Operation flow logger
-    templates/            # Frontend HTML templates
-    static/               # Frontend static assets
-    ...
-requirements.txt          # Dependency list
-.env                      # API Key (local only, not uploaded)
 ```
 
 ---
 
-## 📝 FAQ
+### 5️⃣ Running the Chatbot
 
-- **API Key Error**: Make sure `.env` is correctly filled and in the project root, and `PPLX_API_KEY` is valid.
-- **Dependency Issues**: If you encounter missing packages, run `pip install -r requirements.txt`.
-- **Port Conflict**: Use `python app.py --port=xxxx` to specify another port.
+Once the setup is complete, run the chatbot with the following command:
+
+```
+streamlit run Chatbot_A1.py
+```
 
 ---
 
-## 👥 Contribution
 
-PRs, issues, and suggestions are welcome!
+## Tests Conducted
+Results of the tests follow the logic and step defined in the prompt template. 
+
+- Tested with asking for domain specific questions such as "Who is Ayham Boucher?" (WITHOUT uploading any documents)
+- Tested with asking for general questions such as "What is a banana?" , "Who is the first president of the U.S.?"(WITHOUT uploading any documents)
+- Tested with asking for general questions such as "What is a banana?", "Who is the first president of the U.S.?" (AFTER uploading single/multiple document(s))
+- Tested with domain specific questions such as "Who is Ayham Boucher", "What does Ayham teach?", "What is Harvard's school color?", "When was Cornell built?" (AFTER uploading single/multiple document(s))
+
+If you hope to start over after testing, please feel free to delete the 'uploaded_docs' and 'chroma_db' directories and re-run the AI chatbot. 
+
+
+## 📌 Features
+
+- Upload and process PDF and TXT documents.
+- Store document embeddings using ChromaDB.
+- Retrieve relevant document sections using similarity search.
+- Generate responses using OpenAI's GPT-4o model.
+- Maintain conversation history within a session.
+- Able to identify source of information.
+- Answer the question even when context does not include useful information, with notification to users that response is generated not based on the context, or respond with "I don't know".
+
+---
+
+## 📂 File Upload Processing
+
+- Uploaded files are saved in the `uploaded_docs` directory.
+- Documents are split into chunks for efficient retrieval.
+- Chunks are stored in ChromaDB for similarity search, along with metadata (source file name).
+
+---
+
+## 📌 RAG Pipeline
+
+1. **Document Upload:** Users upload PDF/TXT files.
+2. **Text Processing:** Extracted text is chunked using `RecursiveCharacterTextSplitter`. 
+3. **Vector Storage:** Chunks and source of information are embedded and stored in ChromaDB.
+4. **Retrieval:** Similar document chunks and corresponding metadata about source files are retrieved based on user queries.
+5. **Generation:** Retrieved content is used to generate an answer using GPT-4o, following tailored prompts.
+
+
+---
+
+## 🙏 Acknowledgement
+
+This project is developed as part of INFO-5940 at Cornell University.
 
  

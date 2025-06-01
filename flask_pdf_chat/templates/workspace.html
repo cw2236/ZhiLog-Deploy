@@ -57,7 +57,7 @@
                 <div class="sidebar-section">
                     <div class="sidebar-folder" onclick="window.location.href='/workspace'"><i class="fa fa-folder"></i> Workspace</div>
                     {% if pdf_filename %}
-                        <div class="sidebar-item{% if mode == 'main' %} sidebar-item-active{% endif %}" onclick="window.location.href='/'"><i class="fa fa-file-lines"></i> {{ pdf_filename }}</div>
+                        <div class="sidebar-item{% if mode == 'main' %} sidebar-item-active{% endif %}" onclick="window.location.href='/'"><i class="fa fa-file-lines"></i> <span class="pdf-filename" title="{{ pdf_filename }}">{{ pdf_filename[:30] ~ ('...' if pdf_filename|length > 30 else '') }}</span></div>
                         {% if has_note %}
                             <div class="sidebar-item{% if mode == 'note_chat' %} sidebar-item-active{% endif %}" onclick="window.location.href='/note_chat'" style="padding-left:48px;font-size:0.97em;color:#2196F3;"><i class="fa fa-pen"></i> 1.1 Quick Notes</div>
                         {% endif %}
@@ -100,7 +100,7 @@
             <div class="file-row">
                 <div class="file-info">
                     <i class="fa fa-file-pdf file-icon"></i>
-                    <span class="file-name" style="cursor:pointer;color:#2196F3;text-decoration:underline;" onclick="window.location.href='/'">{{ pdf_filename }}</span>
+                    <span class="file-name" style="cursor:pointer;color:#2196F3;text-decoration:underline;" onclick="window.location.href='/'"><span class="pdf-filename" title="{{ pdf_filename }}">{{ pdf_filename[:30] ~ ('...' if pdf_filename|length > 30 else '') }}</span></span>
                 </div>
                 <div class="file-actions">
                     <button class="file-action-btn" title="Download"><i class="fa fa-download"></i></button>
@@ -147,6 +147,10 @@
           </div>
         </div>
         <div id="reference-area"></div>
+        <!-- Agent 操作流程卡片区域，固定高度、可滚动，放在输入框上方 -->
+        <div class="bg-white rounded-xl shadow p-4 mb-4" style="max-width:520px;margin:0 auto;height:16rem;overflow-y:auto;">
+          <div id="agent-operation-flow" class="space-y-4"></div>
+        </div>
         <div class="chat-input-row-v2" style="margin-bottom:32px;padding-left:24px;padding-right:24px;display:flex;justify-content:center;">
             <input type="text" class="chat-input-v2" id="chat-input" placeholder="Message to ZhiLog..." style="width:calc(100% - 60px);max-width:420px;">
             <button class="chat-send-btn-v2" id="chat-send-btn"><i class="fa fa-paper-plane"></i> </button>
