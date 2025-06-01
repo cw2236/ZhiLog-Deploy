@@ -96,7 +96,6 @@ def extract_tags(note, max_tags=5, max_len=30):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    session.clear()
     pdf_url = session.get('pdf_url')
     if 'chat_sessions' not in session:
         session['chat_sessions'] = {}
@@ -124,13 +123,10 @@ def index():
                 pdf_url = url_for('static', filename='uploads/' + filename)
                 session['pdf_url'] = pdf_url
                 session['pdf_filename'] = filename
-                # 自动reset
-                session['chat_sessions'] = {}
+                # 只重置pdf相关内容，保留note和chat_sessions
                 session['pdf_text'] = ""
                 session['pdf_summary'] = ""
                 session['selected_text'] = ""
-                session['last_note'] = ""
-                session['note_chatbot_history'] = []
                 # 提取PDF文本
                 pdf_text = extract_pdf_text(filepath)
                 session['pdf_text'] = pdf_text
