@@ -96,6 +96,7 @@ def extract_tags(note, max_tags=5, max_len=30):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    session.clear()
     pdf_url = session.get('pdf_url')
     if 'chat_sessions' not in session:
         session['chat_sessions'] = {}
