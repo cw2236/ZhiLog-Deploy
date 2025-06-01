@@ -9,7 +9,7 @@ from datetime import datetime
 import json
 import shutil
 import re
-from agent import agent
+from flask_pdf_chat.agent import agent
 from agent_logger import AgentOperationLogger
 
 app = Flask(__name__)
