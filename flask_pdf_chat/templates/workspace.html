@@ -86,6 +86,9 @@
                     <div class="sidebar-action"><i class="fa fa-gear"></i> Settings</div>
                 </div>
             </div>
+            <div class="sidebar-section">
+                <button id="sidebar-reset-btn" class="sidebar-action" style="width:90%;margin:12px auto 0 auto;display:block;background:#fff;color:#e53935;border:1.5px solid #e53935;border-radius:8px;padding:8px 0;font-weight:600;cursor:pointer;">Reset</button>
+            </div>
         </div>
         <div class="sidebar-bottom-v2">
             <img class="avatar-v2" src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=facearea&w=256&h=256" />
@@ -283,6 +286,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 kmSection.style.display = 'none';
                 kmToggle.textContent = '▶';
             }
+        };
+    }
+    var resetBtn = document.getElementById('sidebar-reset-btn');
+    if (resetBtn) {
+        resetBtn.onclick = async function() {
+            await fetch('/reset', {method: 'POST'});
+            window.location.href = '/';
         };
     }
 });
