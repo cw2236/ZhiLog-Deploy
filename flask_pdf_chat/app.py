@@ -23,7 +23,7 @@ app.config['UPLOAD_FOLDER'] = 'flask_pdf_chat/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB
 
 # 设置OpenAI API密钥
-openai.api_key = "sk-lxUWT88Z2f--5a-7CKZjxQ"
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 openai.base_url = "https://api.ai.it.cornell.edu"
 
 # 清空 session 文件夹
