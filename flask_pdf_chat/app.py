@@ -10,7 +10,7 @@ import json
 import shutil
 import re
 from flask_pdf_chat.agent import agent
-from agent_logger import AgentOperationLogger
+from flask_pdf_chat.agent_logger import AgentOperationLogger
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
