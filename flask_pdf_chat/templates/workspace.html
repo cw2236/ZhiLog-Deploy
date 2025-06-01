@@ -195,6 +195,12 @@ function renderChat(history) {
             ${refHtml}<div class="chat-message-content">${msg.content}</div>
         `;
         chatBox.appendChild(div);
+        // 检查用户消息是否包含 upload/上传，自动跳转到上传页面
+        if (msg.role === 'user' && (msg.content.toLowerCase().includes('upload') || msg.content.includes('上传'))) {
+            setTimeout(function() {
+                window.location.href = '/?auto_upload=1';
+            }, 600);
+        }
     }
     chatBox.scrollTop = chatBox.scrollHeight;
 }
