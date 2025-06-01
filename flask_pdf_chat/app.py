@@ -325,9 +325,16 @@ def get_sessions():
 
 @app.route('/reset', methods=['POST'])
 def reset():
-    session['chat_history'] = []
-    session['pdf_text'] = ""
-    session['pdf_summary'] = ""
+    session.clear()
+    # 删除 static/uploads 下所有 PDF 文件
+    static_upload_dir = os.path.join(app.root_path, 'static', 'uploads')
+    if os.path.exists(static_upload_dir):
+        for f in os.listdir(static_upload_dir):
+            if f.lower().endswith('.pdf'):
+                try:
+                    os.remove(os.path.join(static_upload_dir, f))
+                except Exception as e:
+                    print(f"删除PDF失败: {f}", e)
     session.modified = True
     return jsonify({"status": "success"})
 
