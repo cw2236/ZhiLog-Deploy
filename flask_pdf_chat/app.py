@@ -270,19 +270,25 @@ def chat():
 
     print("Final context:", context[:300])  # 只打印前300字
 
-    # === 构建 prompt ===
-    print("context:", context)  # 调试用
-    if not context:
-        context = reference_text
-    prompt = f"""你是一个专业的PDF文档助手。请只针对用户选中的内容进行回答，必要时可参考上下文信息，但不要泛泛总结上下文。
+    # === 构建英文 prompt，追加历史对话，提升 follow up 效果 ===
+    history_str = ""
+    for msg in chat_history:
+        if msg['role'] == 'user':
+            history_str += f"\nUser: {msg['content']}"
+        elif msg['role'] == 'assistant':
+            history_str += f"\nAssistant: {msg['content']}"
+    prompt = f"""You are a professional PDF document assistant. Please answer ONLY based on the user's selected content, and refer to the context if necessary. If there are follow-up questions, answer them in a coherent, context-aware way using the previous conversation.
 
-【选中内容】
+[Selected Content]
 {reference_text}
 
-【上下文】
+[Context]
 {context}
 
-【用户问题】
+[Conversation History]
+{history_str}
+
+[User Question]
 {user_input}
 """
 
@@ -291,7 +297,7 @@ def chat():
     response = client.chat.completions.create(
         model="openai.gpt-4o",
         messages=[
-            {"role": "system", "content": "你是一个专业的PDF文档助手。"},
+            {"role": "system", "content": "You are a professional PDF document assistant."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.7,
